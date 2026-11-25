@@ -4,6 +4,7 @@
  * TRACK        : Two Pointers & Sliding Window
  * DIFFICULTY   : EASY     (1 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- palindrome check lagbhag har service round mein; variants product mein
  * TECHNIQUE    : Converging two pointers; expand-around-centre for the longest substring
  *
  * PROBLEM
@@ -36,11 +37,35 @@
  *   expand. Knowing there are 2n-1 centres (n characters plus n-1 gaps) is what makes the
  *   longest-substring version click.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Do pointer, ek shuru pe aur ek end pe. Jo letter/digit nahi hai use skip karo, case
+ *   ignore karo. Ek deletion allowed ho to mismatch pe dono try karo: left skip ya right skip.
+ *   Longest palindrome: har centre (2n-1: har char aur har gap) se bahar expand karo.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The easy version cleans the string, reverses it and compares, which costs O(n) extra
+ *   space. I use two pointers from both ends, skip non-alphanumeric characters and compare
+ *   case-insensitively, so it is O(n) time and O(1) space. If one deletion is allowed, at
+ *   the first mismatch I check both remaining ranges, still O(n). For the longest
+ *   palindromic substring I expand around all 2n-1 centres, O(n^2) time and O(1) space;
+ *   Manacher's is linear but rarely expected."
+ *
+ * TRAP
+ *   ! Sirf odd centre expand(i, i) kiya to "cbbd" ka "bb" miss; even centre (i, i+1) bhi lo.
+ *   ! One-deletion mein sirf left skip karna galat hai; dono options OR se check karo.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Allow TWO deletions -- does your approach still work?
+ *     -> Haan, deletion budget ke saath recursion: har mismatch pe 2 branch, O(2^k * n).
+ *        k bada ho to check karo n - LPS(s) <= k; LPS ki DP O(n^2).
  *   ? Longest palindromic SUBSEQUENCE -- why is that a different problem?
+ *     -> Subsequence contiguous nahi hoti, to centre se expand kaam nahi karta. DP: s[i] ==
+ *        s[j] to dp[i+1][j-1] + 2, warna max(dp[i+1][j], dp[i][j-1]). O(n^2).
  *   ? Palindrome check for a linked list.
+ *     -> slow/fast se middle, second half reverse, compare, phir wapas reverse karke list
+ *        restore. O(n) time, O(1) space. Code: Q29LinkedListToolkit.
  *   ? Count all palindromic substrings.
+ *     -> Wahi 2n-1 centres; har successful expand pe count++. O(n^2) time, O(1) space.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Valid palindrome II
@@ -48,6 +73,8 @@
  *   - Palindrome linked list
  *   - Palindrome number without strings
  *   - Count palindromic substrings
+ *
+ * VARIANTS     : LC 125, LC 680, LC 5, LC 647, LC 516, LC 234, LC 9
  * ============================================================================================== */
 
 public class Q18PalindromeFamily {

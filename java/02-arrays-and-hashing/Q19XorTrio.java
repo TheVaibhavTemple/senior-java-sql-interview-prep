@@ -4,6 +4,7 @@
  * TRACK        : Arrays & Hashing
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- missing number service rounds mein common; Floyd wala product mein
  * TECHNIQUE    : XOR cancellation (x^x == 0); Floyd cycle detection over array values
  *
  * PROBLEM
@@ -40,11 +41,38 @@
  *   treating a[i] as a pointer turns an array problem into the linked-list cycle problem
  *   you already know.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   XOR ke do rule: x ^ x = 0 aur 0 ^ y = y. Jo do baar aaya wo cancel, akela bach jata hai.
+ *   Missing number: n, saare index aur saari values XOR karo; jo bacha wahi gayab hai.
+ *   Duplicate (read-only, O(1) space): a[i] ko next pointer maano. Duplicate se cycle
+ *   banti hai, aur cycle ka entry point hi duplicate hai (Floyd).
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A HashSet finds the missing or duplicate value in O(n) time but costs O(n) space, and
+ *   the sum formula can overflow an int. For the missing number I XOR n with every index
+ *   and every value; the pairs cancel and the survivor is the gap, in O(n) time and O(1)
+ *   space. For the duplicate in a read-only array I treat each value as a pointer to an
+ *   index, so the duplicate becomes the entry of a cycle, and Floyd's tortoise and hare
+ *   finds it in O(n) time and O(1) space without modifying the array."
+ *
+ * TRAP
+ *   ! Sum formula int mein: n*(n+1) ka product n = 46341 pe hi overflow. long lo ya XOR.
+ *   ! Floyd phase 2 mein slow ko wapas start (a[0]) pe lao, fast meeting point pe rahe,
+ *     aur ab dono ek-ek step chalein.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Two numbers are missing instead of one -- how does XOR extend?
+ *     -> Sab XOR karo to x ^ y milta hai. Uska ek set bit lo (xor & -xor); us bit se values
+ *        aur 1..n ko do groups mein baanto; har group ka XOR ek missing number hai.
  *   ? Every element appears three times except one -- does XOR still work?
+ *     -> Nahi, x ^ x ^ x = x, cancel nahi hota. Har bit ka count % 3 lo (32 bits), ya
+ *        ones/twos bitmask trick. O(n) time, O(1) space.
  *   ? Why does the sum formula overflow, and at what n?
+ *     -> int mein n*(n+1) ka product n = 46341 pe overflow karta hai, aur n*(n+1)/2 khud
+ *        n = 65536 pe int se bahar. Java chupchap wrap karta hai, exception nahi aata.
  *   ? Explain why Floyd's algorithm applies to an array.
+ *     -> Values 1..n hain, to i -> a[i] hamesha valid index hai: ek linked list ban jati.
+ *        n+1 index, n values: do index ek hi value pe point karte hain, wahi cycle entry.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Single number I / II / III
@@ -52,6 +80,8 @@
  *   - Find the duplicate number
  *   - Detect a cycle in a linked list
  *   - Odd occurrence element
+ *
+ * VARIANTS     : LC 268, LC 136, LC 137, LC 260, LC 287, LC 142
  * ============================================================================================== */
 
 import java.util.*;

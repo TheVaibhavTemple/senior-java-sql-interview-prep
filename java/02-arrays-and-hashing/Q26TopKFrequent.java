@@ -4,6 +4,7 @@
  * TRACK        : Arrays & Hashing
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- product rounds mein common; heap direction ka sawaal pakka aata hai
  * TECHNIQUE    : Frequency map + bounded min-heap; bucket-by-frequency for linear time
  *
  * PROBLEM
@@ -35,17 +36,53 @@
  *   because reaching for a max-heap is the most common wrong turn. If they push for
  *   strictly linear, bucket sort by frequency is the clean answer.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Pehle HashMap mein har number ki frequency gino.
+ *   Phir size k ka MIN-heap: top pe sabse kamzor; size k se upar jaye to poll karke nikalo.
+ *   End mein heap mein top k bachte hain. Linear chahiye to frequency ke buckets banao.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "First I count frequencies in a HashMap. Sorting all entries by count works but is
+ *   O(n log n). Instead I keep a min-heap of size k: the weakest candidate sits on top, so
+ *   when the heap grows past k I evict it, which gives O(n log k) time and O(k) heap space.
+ *   If they want strictly linear, I bucket the keys by frequency, because a count can never
+ *   exceed n, and read the buckets from the top down: O(n) time and O(n) space."
+ *
+ * TRAP
+ *   ! Top-k LARGEST ke liye MIN-heap. Max-heap mein saare entries rakhne padte hain: O(n).
+ *   ! Bucket mein ties ho to ek bucket k se zyada de sakta hai; k pe ruko (topKBucket()).
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why a min-heap and not a max-heap?
+ *     -> Min-heap size k: top pe sabse kamzor, evict O(log k); total O(n log k), heap O(k).
+ *        Max-heap galat nahi, par saare entries rakhta hai: heap O(n), poll k baar.
  *   ? Can you do it in O(n)? Show the bucket version.
+ *     -> Haan: frequency <= n, to n+1 buckets; key ko bucket[freq] mein daalo aur upar se
+ *        neeche padho jab tak k na ho jaye. Code: topKBucket().
  *   ? k equals n -- which approach wins now?
+ *     -> Heap ka log k ab log n hai, yani sort jaisa. Bucket O(n) hi rehta hai; aur order
+ *        nahi chahiye to saare distinct keys seedha return kar do.
  *   ? Top K frequent WORDS with ties broken alphabetically.
+ *     -> Comparator: count ascending, tie pe word REVERSE order, taaki bada word pehle evict
+ *        ho; phir drain karke ulta karo. Code: topKWords().
  *
  * LEARN THIS AND YOU ALSO GET
  *   - K closest points to origin
  *   - Top K frequent words
  *   - Sort characters by frequency
  *   - K largest elements
+ *
+ * JAVA 21 MEIN
+ *   LinkedList.addFirst ki jagah ArrayList mein poll karo aur out.reversed() lautao.
+ *   List.reversed() Java 21 (SequencedCollection) ka hai: copy nahi, ulta view deta hai.
+ *
+ * APNI STORY SE JODO
+ *   "In a batch job I replaced a synchronized shared HashMap with ConcurrentHashMap to
+ *   remove lock contention, and the batch window went from 45 minutes to 8 minutes."
+ *   Note: agar pooche "counts kai threads se banao", yahan jodo. ConcurrentHashMap.merge
+ *   atomic hai aur poore map pe lock nahi lagata.
+ *
+ * VARIANTS     : LC 347, LC 692, LC 451, LC 973, LC 215
  * ============================================================================================== */
 
 import java.util.*;
@@ -85,7 +122,7 @@ public class Q26TopKFrequent {
         List<Integer> out = new ArrayList<>();
         for (int c = bucket.size() - 1; c >= 0 && out.size() < k; c--)
             if (bucket.get(c) != null) out.addAll(bucket.get(c));
-        return out;
+        return out.subList(0, Math.min(k, out.size()));   // a tied bucket can overshoot k
     }
 
     /* ---- the same shape for words, with an alphabetical tie-break ---- */

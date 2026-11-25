@@ -4,6 +4,7 @@
  * TRACK        : Sorting, Searching & Heaps
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- merge two sorted arrays common hai; K lists wala heap product rounds mein
  * TECHNIQUE    : Backward in-place merge; min-heap of heads for the K-way merge
  *
  * PROBLEM
@@ -22,8 +23,8 @@
  * APPROACHES  (what to compare out loud before you write a line)
  *   APPROACH                                       TIME          SPACE     VERDICT
  *   ----------------------------------------------------------------------------------------
- *   Concatenate and sort                           O((m+n) log(m O(m+n)    avoid
- *       > Throws away the fact that both inputs are already sorted.
+ *   Concatenate and sort                           O(N log N)    O(m+n)    avoid
+ *       > N = m + n. Throws away the fact that both inputs are already sorted.
  *   Merge forwards into a new array                O(m+n)        O(m+n)    acceptable
  *       > Correct, but allocates.
  *   Merge BACKWARDS in place                       O(m+n)        O(1)      WRITE THIS
@@ -37,11 +38,38 @@
  *   merge, the heap turns "pick the smallest of k" from O(k) into O(log k) -- that is the
  *   only difference between a good and a bad answer.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Dono input pehle se sorted hain, to dobara sort mat karo. Array wale case mein free space
+ *   peeche hai, isliye peeche se bharo: bada element last slot mein, kuch shift nahi hota.
+ *   K lists ke liye min-heap mein sirf K heads rakho: sabse chhota nikalo, uska next daalo.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The brute force is to copy everything into one array and sort it, O(N log N), but that
+ *   throws away the fact that both inputs are already sorted. The free slots are at the end
+ *   of the first array, so I merge from the back: compare the two tails and write the larger
+ *   one into the last free slot, which is O(m+n) time and O(1) extra space. I loop until b is
+ *   used up, because whatever is left of a is already in place. For K lists I keep a min-heap
+ *   of the current heads, which gives O(N log k) instead of O(N k)."
+ *
+ * TRAP
+ *   ! Loop tab tak chalao jab tak b bacha hai (j >= 0). Dono pointers par loop roka aur baad
+ *     mein b copy karna bhool gaye, to b ke bache elements chhoot jaate hain.
+ *   ! K-way mein Comparator dena mat bhoolo: ListNode Comparable nahi hai, to PriorityQueue
+ *     pehle hi add par ClassCastException deta hai. Null lists heap mein mat daalo.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why fill from the back rather than the front?
+ *     -> Aage se bharoge to a ke wo elements overwrite honge jo abhi compare hone baaki hain,
+ *        ya har insert par shifting (O(n)). Peeche free space hai, wahan likhna safe hai.
  *   ? Merge K lists without a heap -- divide and conquer. What is the complexity?
+ *     -> Lists ko pairs mein merge karo: k -> k/2 -> ... -> 1. log k rounds, har round O(N),
+ *        to O(N log k), heap jitna hi. Ek-ek karke jodoge to O(N k).
  *   ? The lists are too large for memory -- external merge, what changes?
+ *     -> Chunk memory mein sort karke disk par sorted run likho, phir runs ka heap se K-way
+ *        merge, buffered reads ke saath. Ab bottleneck disk I/O hai, CPU nahi.
  *   ? Merge two sorted arrays removing duplicates.
+ *     -> Wahi two-pointer merge, bas likhne se pehle check karo ki value last likhi value ke
+ *        barabar to nahi. Barabar ho to skip; isse dono arrays ke andar ke duplicates bhi hatte.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Merge K sorted lists
@@ -49,6 +77,8 @@
  *   - Merge intervals (after sorting)
  *   - Intersection of sorted arrays
  *   - External sort
+ *
+ * VARIANTS     : LC 88, LC 21, LC 23
  * ============================================================================================== */
 
 import java.util.*;

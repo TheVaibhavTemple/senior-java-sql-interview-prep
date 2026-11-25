@@ -4,6 +4,7 @@
  * TRACK        : Arrays & Hashing
  * DIFFICULTY   : EASY     (1 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- har round mein aata hai; HashMap wali soch yahin se banti hai
  * TECHNIQUE    : Hash map complement lookup (one pass); two pointers when the input is sorted
  *
  * PROBLEM
@@ -35,12 +36,38 @@
  *   unique-character collapse into the same three lines. The only trap is putting the
  *   value into the map before the lookup, which lets an element pair with itself.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Har number pe pucho: "mera jodidaar (target - x) pehle aa chuka hai kya?"
+ *   HashMap mein value -> index rakho, ek hi pass mein jawab mil jata hai.
+ *   Pehle lookup, phir put. Ulta kiya to element khud se hi pair ban jayega.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The brute force checks every pair, which is O(n^2), so I would not stop there. I scan
+ *   the array once and keep a HashMap from value to index. For each number I look up
+ *   target minus that number: a hit gives me both indices, otherwise I store the number.
+ *   That is O(n) time and O(n) space. I look up before I put, so an element never pairs
+ *   with itself, and if the input is already sorted I use two pointers for O(1) space."
+ *
+ * TRAP
+ *   ! put() lookup se pehle likha to [3,2,4] target 6 pe 3 khud se pair ho jata hai: [0,0].
+ *   ! Indices maange hain to sort mat karo; sort ke baad original index kho jaate hain.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why put AFTER the lookup and not before?
+ *     -> Pehle put karoge to nums[i] apna hi complement ban sakta hai (3 + 3 = 6, same
+ *        index). Baad mein put karne se map mein sirf pichle elements hote hain.
  *   ? Multiple valid pairs -- return all of them without duplicates.
+ *     -> Sort karke two pointers chalao; match milne pe dono taraf same values skip karo,
+ *        bilkul threeSum() ke inner loop jaisa.
  *   ? The array is sorted -- what beats the map?
+ *     -> Two pointers: sum chhota to lo++, bada to hi--. O(n) time, O(1) space.
+ *        Code: twoSumSorted().
  *   ? Extend to 3Sum, then 4Sum. What is the general shape?
+ *     -> Sort, ek anchor fix karo, baaki pe (k-1)Sum; base case two pointers. Time
+ *        O(n^(k-1)): 3Sum O(n^2), 4Sum O(n^3). Duplicate anchors skip karo.
  *   ? Two Sum on a stream you can read only once.
+ *     -> Aate hue values ka HashSet rakho; har naye x pe check karo (target - x) set mein
+ *        hai kya. O(1) per element, memory O(distinct values).
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Pair with given sum
@@ -48,6 +75,13 @@
  *   - Subarray sum equals K
  *   - Longest consecutive sequence
  *   - Two Sum II (sorted)
+ *
+ * JAVA 21 MEIN
+ *   HashMap.newHashMap(n) (Java 19+) n entries ke hisaab se capacity set karta hai.
+ *   new HashMap<>(n) mein n capacity hai, entries nahi; 0.75 load factor ki wajah se n
+ *   entries tak pahunchne se pehle resize ho sakta hai.
+ *
+ * VARIANTS     : LC 1, LC 167, LC 15, LC 16, LC 18, LC 170
  * ============================================================================================== */
 
 import java.util.*;

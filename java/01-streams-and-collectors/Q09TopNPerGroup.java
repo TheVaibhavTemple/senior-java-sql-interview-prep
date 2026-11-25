@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- product aur GCC rounds mein common; collectingAndThen ka asli test
  * TECHNIQUE    : groupingBy + collectingAndThen post-processing; bounded min-heap for large groups
  *
  * PROBLEM
@@ -34,18 +35,46 @@
  *   Collectors do not do directly. Be fluent in it, because "top N per group",
  *   "unmodifiable per group" and "join names per group" are all the same shape.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Dept se group karo, phir har group ko alag se salary desc sort karke limit(n) lagao.
+ *   collectingAndThen(toList(), finisher) har group ki list finisher ko deta hai, wahi sort
+ *   aur limit hota hai. Group bahut bada ho to poora sort mat karo, size-n ka min-heap rakho.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "One option is to sort the whole list by salary first and then group, but that leans on
+ *   groupingBy keeping encounter order, which is subtle. I group by department and use
+ *   collectingAndThen with toList, and the finisher sorts each group by salary descending and
+ *   takes limit(n); that is O(n log g) time for groups of size g, and O(n) space. If a group
+ *   has millions of rows, I replace the sort with a min-heap of size n, so it becomes
+ *   O(g log n) per group. I would also ask how ties on the nth salary should be handled."
+ *
+ * TRAP
+ *   ! Comparator.comparing(e -> e.getSalary()).reversed() compile nahi hota: reversed() ke
+ *     saath lambda ka type Object ban jata hai. Method reference lo ya type likho.
+ *   ! limit(n) ties ko chupchap kaat deta hai; sorted() stable hai, to input order jeetta hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Groups have a million rows each -- why is sorting each group wasteful, and what
  *     replaces it?
+ *     -> Sort O(g log g) hai aur poori list memory mein banti hai, jabki chahiye sirf n. Size-n
+ *        min-heap (topNByHeap) se O(g log n); heap ko custom Collector bana do to list bhi nahi.
  *   ? Ties on the Nth salary -- include all of them or cut arbitrarily?
+ *     -> Pehle business se poochho. Sab chahiye to Nth employee ki salary nikalo aur salary >=
+ *        usse filter karo (SQL: RANK() <= N); cut karna ho to thenComparing(name) tie-breaker.
  *   ? Return names instead of objects.
+ *     -> Finisher mein limit ke baad map(Employee::getName), topNamesPerDept() dekho. String ki
+ *        jagah list chahiye to joining ki jagah toList().
  *   ? Top N overall, not per group -- what is simpler?
+ *     -> Grouping hata do: stream().sorted(salary desc).limit(N). Bada data ho to wahi size-N
+ *        min-heap, O(n log N).
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Top 3 products per category
  *   - Latest 5 orders per customer
  *   - Leaderboard per region
  *   - Kth largest per group
+ *
+ * VARIANTS     : LC 185 (SQL dept top 3 salaries), LC 347 (top K frequent), LC 215 (Kth largest)
  * ============================================================================================== */
 
 import java.util.*;

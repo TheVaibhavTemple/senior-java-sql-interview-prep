@@ -4,6 +4,7 @@
 -- TRACK        : Gaps, Islands & Sessions
 -- DIFFICULTY   : HARD    (3 of 3)
 -- WEIGHTAGE    : MEDIUM  **   the signature "senior SQL" question
+-- PRIORITY     : P3   -- data / product-analytics round ka sawaal; backend service round mein kam
 -- TECHNIQUE    : LAG to find gaps, then a running SUM of the gap flag as a session id
 --
 -- PROBLEM
@@ -32,17 +33,55 @@
 --   streaks, islands and change-point detection. Say that sentence before you write anything;
 --   it is the thing being tested, not the date arithmetic.
 --
--- FOLLOW-UPS
+-- SAMJHO
+--   Har user ke events time order mein lagao, LAG se pichla time lo.
+--   Gap 30 min se zyada hai to flag 1, warna 0. User ka pehla event bhi 1.
+--   Flag ka running SUM har naye session pe ek badhta hai aur session ke andar same rehta hai.
+--   Wahi session id hai. Phir GROUP BY user, session id: MIN, MAX, COUNT.
+--
+-- AISE BOLO  (30-40 sec)
+--   "First I'd confirm the grain: one row per login, and does a gap of exactly 30 minutes start
+--   a new session? Looping over the events in Java works, but it pulls the whole table over the
+--   wire. In SQL I LAG the previous login per user, flag the row 1 when there is no previous row
+--   or the gap is over 30 minutes, and a running SUM of that flag becomes the session id; then I
+--   group by user and session id. It is one sort per user, O(n log n), and an index on
+--   (user_id, login_at) can hand the rows over already in order."
+--
+-- TRAP
+--   ! Pehle event ka LAG NULL hai, aur CASE ka ELSE 0 usko chupchap 0 bana deta hai. Tab
+--     SUM(flag) se session count har user pe ek kam aata hai. IS NULL wali condition mat bhoolo.
+--   ! SQLite julianday float hai: exactly 30 min ka gap 30.0000002 aata hai aur galat naya session
+--     ban jata hai. Isliye flag datetime(prev, '+30 minutes') se exact compare karta hai.
+--
+-- FOLLOW-UPS KE JAWAB
 --   ? Why is a running SUM of the flag a valid session id?
+--     -> Flag sirf session ki pehli row pe 1 hai. To running SUM wahin +1 hota hai aur andar
+--        constant rehta hai: ek session = ek number.
 --   ? What is the flag for the very first event of a user, and why does it matter?
+--     -> 1, kyunki LAG NULL hai. Na do to numbering 0 se shuru hoti hai aur SUM(flag) se
+--        session count har user pe ek kam aata hai.
 --   ? Change the threshold to 5 minutes -- what else in the query changes? (nothing)
+--     -> Kuch nahi, sirf '+30 minutes' ko '+5 minutes' karo. Java se isko bind parameter bana do.
 --   ? Sessions that cross midnight -- does your query care?
+--     -> Nahi. Poora timestamp compare hota hai, date nahi: 23:50 aur 00:10 ek hi session hai.
+--        Business din pe todna chahe to PARTITION BY mein date bhi daalo.
 --
 -- ALSO UNLOCKS
 --   - Web / app session reconstruction
 --   - Streaks and consecutive runs (S16)
 --   - Islands of consecutive ids
 --   - Change-point detection on a status column
+--
+-- ORACLE / POSTGRES MEIN
+--   julianday() aur datetime(x, '+30 minutes') sirf SQLite ke hain.
+--   Postgres : flag = login_at > prev + INTERVAL '30 minutes'   (prev = LAG(login_at) OVER (...))
+--              minutes chahiye to EXTRACT(EPOCH FROM (login_at - prev)) / 60.
+--   Oracle   : flag = login_at > prev + INTERVAL '30' MINUTE   (DATE aur TIMESTAMP dono pe).
+--              DATE - DATE din deta hai (minutes = diff * 24 * 60); TIMESTAMP - TIMESTAMP
+--              INTERVAL deta hai, isliye seedha INTERVAL se compare karo.
+--   MATCH_RECOGNIZE Oracle 12c+ mein hai, Postgres mein nahi.
+--
+-- VARIANTS     : no exact LeetCode match; classic web-analytics sessionisation (30-min idle rule)
 -- ================================================================================================
 
 -- >>> QUERY: step 1 and 2 -- the gap and the flag, shown explicitly
@@ -52,9 +91,8 @@ SELECT user_id, login_at,
             - julianday(LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at)))
             * 24 * 60) AS INTEGER) AS gap_minutes,
        CASE WHEN LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at) IS NULL
-             OR (julianday(login_at)
-                 - julianday(LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at)))
-                 * 24 * 60 > 30
+             OR login_at > datetime(LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at),
+                                    '+30 minutes')
             THEN 1 ELSE 0 END AS new_session_flag
 FROM   logins
 ORDER  BY user_id, login_at;
@@ -63,9 +101,8 @@ ORDER  BY user_id, login_at;
 WITH flagged AS (
     SELECT user_id, login_at,
            CASE WHEN LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at) IS NULL
-                 OR (julianday(login_at)
-                     - julianday(LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at)))
-                     * 24 * 60 > 30
+                 OR login_at > datetime(LAG(login_at) OVER (PARTITION BY user_id
+                                                            ORDER BY login_at), '+30 minutes')
                 THEN 1 ELSE 0 END AS is_new
     FROM   logins
 ),
@@ -89,9 +126,8 @@ ORDER  BY user_id, session_no;
 WITH flagged AS (
     SELECT user_id, login_at,
            CASE WHEN LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at) IS NULL
-                 OR (julianday(login_at)
-                     - julianday(LAG(login_at) OVER (PARTITION BY user_id ORDER BY login_at)))
-                     * 24 * 60 > 30
+                 OR login_at > datetime(LAG(login_at) OVER (PARTITION BY user_id
+                                                            ORDER BY login_at), '+30 minutes')
                 THEN 1 ELSE 0 END AS is_new
     FROM logins),
 sessioned AS (
@@ -109,7 +145,7 @@ FROM   per_session GROUP BY user_id ORDER BY user_id;
 
 -- ================= RESULTS ========================================================================
 -- Generated by run_all.py against 00-schema/01_schema.sql + 02_seed.sql
--- Engine: SQLite 3.53.1.  Fresh database per file, so each file reproduces standalone.
+-- Engine: SQLite 3.50.4.  Fresh database per file, so each file reproduces standalone.
 -- ----------------------------------------------------------------------------------------
 -- [step 1 and 2 -- the gap and the flag, shown explicitly]
 --   user_id  login_at             prev_login           gap_minutes  new_session_flag

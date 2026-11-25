@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- ThreadPoolExecutor ke parameters aur task order senior rounds ka standard
  * TECHNIQUE    : Explicit ThreadPoolExecutor with a bounded queue and CallerRunsPolicy backpressure
  *
  * PROBLEM
@@ -42,14 +43,47 @@
  *   the fact that submit() buries exceptions inside the Future while execute() surfaces
  *   them.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Naya task pehle core threads ko, phir queue mein, queue full ho tab max tak naye threads,
+ *   phir reject. Unbounded queue kabhi full nahi hoti, to max kabhi nahi pahunchta aur heap
+ *   bharta rehta hai. Bounded queue + CallerRunsPolicy se overload backpressure ban jata hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Executors.newFixedThreadPool hides an unbounded LinkedBlockingQueue, so under overload it
+ *   queues until the heap runs out, and newCachedThreadPool can create thousands of threads.
+ *   I build the ThreadPoolExecutor explicitly: named threads, a bounded ArrayBlockingQueue,
+ *   and CallerRunsPolicy so the submitter slows down when the pool is saturated. I start at
+ *   cores plus one for CPU-bound work and cores times one plus wait over compute for I/O,
+ *   then tune from queue depth and p99 latency. The catch is that CallerRuns executes on the
+ *   caller, so the caller must never be an event-loop thread."
+ *
+ * TRAP
+ *   ! "maxPoolSize 50 hai to load par 50 threads banenge" - galat. Core se upar thread tabhi
+ *     banta hai jab queue full ho.
+ *   ! Pool ka task usi pool mein child task submit karke get() pe ruke, to saare threads wait
+ *     mein aur child queue mein: thread starvation deadlock.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why is maximumPoolSize never reached with an unbounded queue?
+ *     -> Extra thread tabhi banta hai jab queue ka offer() false de. Unbounded queue kabhi
+ *        false nahi deti, to pool core size par hi ruka rehta hai.
  *   ? Take the four rejection policies apart -- when is each right?
+ *     -> Abort (default): exception, caller ko pata chale. CallerRuns: backpressure. Discard:
+ *        chupchap drop, sirf lossy metrics ke liye. DiscardOldest: sabse purana drop, jab
+ *        sirf latest value maayne rakhe.
  *   ? Size a pool for 8 cores, 100 ms of I/O wait and 10 ms of CPU per task.
+ *     -> 8 x (1 + 100/10) = 88 threads. Phir downstream dekho: DB connection pool chhota hai
+ *        to 88 threads bhi wahin line mein khade honge.
  *   ? A task in the pool submits another task to the same pool and waits for it -- what
  *     happens?
+ *     -> Saare threads parent tasks mein wait karein to child queue mein hi pada rahega:
+ *        thread starvation deadlock. Alag pool lo, ya CompletableFuture se bina block kiye jodo.
  *   ? What do you alert on: CPU, queue depth, or latency?
+ *     -> Queue depth, p99 latency aur rejection count. I/O-bound pool mein CPU kam dikhta hai
+ *        jab service already doob rahi hoti hai.
  *   ? How do virtual threads change this configuration?
+ *     -> I/O-bound kaam mein pool sizing khatam: har task ka naya virtual thread, limit ke
+ *        liye Semaphore. CPU-bound kaam ke liye sized platform pool hi rahega.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Executor sizing
@@ -57,6 +91,20 @@
  *   - Graceful shutdown
  *   - Thread pool starvation
  *   - Virtual threads vs pools
+ *
+ * JAVA 21 MEIN
+ *   - Executors.newVirtualThreadPerTaskExecutor(): virtual threads ko pool mat karo, wo saste
+ *     hain. DB jaisi limit ke liye Semaphore lagao (Q49).
+ *   - Java 21 mein synchronized ke andar blocking call carrier thread ko pin karta hai; hot
+ *     path par ReentrantLock lo. JDK 24 mein ye pinning hata di gayi.
+ *
+ * APNI STORY SE JODO
+ *   "On Java 21 I have used virtual threads at work for [bhar do: kaunsa I/O-bound kaam]; for
+ *   CPU-bound work I would still keep a sized platform pool."
+ *   Note: Koi throughput ya latency number nahi hai, mat banao. Detail ke liye Q49 dekho.
+ *
+ * VARIANTS     : classic - size an I/O vs CPU pool, custom RejectedExecutionHandler with a
+ *                metric, thread starvation deadlock
  * ============================================================================================== */
 
 import java.util.concurrent.*;

@@ -4,6 +4,7 @@
  * TRACK        : Arrays & Hashing
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- product aur fintech rounds mein common; prefix sum ka core template
  * TECHNIQUE    : Prefix sum plus a hash map of prefix counts
  *
  * PROBLEM
@@ -36,11 +37,37 @@
  *   fails: with negatives, growing the window can decrease the sum, so "shrink while too
  *   big" is not a valid rule. Saying that unprompted is a strong signal.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Running sum rakho. Agar (sum - k) pehle kabhi prefix tha, to beech ka subarray k hai.
+ *   Map mein "yeh prefix sum kitni baar aaya" rakho; har step pe count += map[sum - k].
+ *   Map ko (0 -> 1) se seed karo, warna index 0 se shuru hone wale subarray chhoot jaate.
+ *   Negative numbers hon to sliding window nahi chalta; yahi prefix sum ka kaam hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Brute force fixes every start and extends with a running sum, which is O(n^2). A
+ *   sliding window looks tempting, but with negative numbers the sum is not monotonic, so
+ *   there is no safe rule for when to shrink. I keep a running prefix sum and a HashMap of
+ *   how many times each prefix has appeared, and at each index I add the count of sum
+ *   minus k. That is O(n) time and O(n) space, and I seed the map with zero mapped to one
+ *   so that subarrays starting at index 0 are counted."
+ *
+ * TRAP
+ *   ! put(0, 1) bhoole to shuru wale subarray miss: [1,1,1], k = 2 pe 2 ki jagah 1 aata hai.
+ *   ! Current sum ko lookup se pehle map mein daala to k = 0 pe khali subarray bhi gin loge.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why prefixCount.put(0, 1) before the loop?
+ *     -> Khali prefix ka sum 0 hai. Jab sum khud k ho (subarray index 0 se), tab sum - k = 0
+ *        dhundha jata hai; seed na ho to wo subarray count nahi hota.
  *   ? Why does a sliding window work for positive-only arrays but not here?
+ *     -> Sirf positive mein window badhao to sum badhta, chhota karo to ghatta: monotonic.
+ *        Negative aate hi yeh tootta hai, aur "sum > k pe shrink" galat ho jata hai.
  *   ? Longest subarray summing to k instead of the count -- what changes in the map?
+ *     -> Count ki jagah prefix ka PEHLA index rakho (putIfAbsent), seed (0 -> -1). Har i pe
+ *        best = max(best, i - first[sum - k]). Same shape: findMaxLength().
  *   ? Subarrays divisible by k -- what is the key now?
+ *     -> Key = prefix % k: same remainder wale do prefix ke beech ka subarray divisible hai.
+ *        Java mein -7 % 5 = -2, isliye ((sum % k) + k) % k. Code: subarraysDivByK().
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Contiguous array (equal 0s and 1s)
@@ -48,6 +75,8 @@
  *   - Longest subarray with sum K
  *   - Count nice subarrays
  *   - Binary subarrays with sum
+ *
+ * VARIANTS     : LC 560, LC 525, LC 974, LC 523, LC 325, LC 930, LC 1248
  * ============================================================================================== */
 
 import java.util.*;

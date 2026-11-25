@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- partitioningBy vs groupingBy ka gotcha streams rounds mein aata rehta hai
  * TECHNIQUE    : partitioningBy (always both keys) and summarizing collectors (one traversal, five aggregates)
  *
  * PROBLEM
@@ -37,17 +38,55 @@
  *   summarizingDouble answers "min, max, average and count without four passes" --
  *   candidates almost always write four streams.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   partitioningBy ek predicate se list ko do hisson mein baanta hai aur true/false dono key
+ *   hamesha deta hai, chahe ek side khaali ho. groupingBy(boolean) sirf wahi key deta hai jo
+ *   aayi. summarizingDouble ek hi pass mein count, min, max, sum aur average de deta hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Two filtered streams, one for each side, would work but take two passes. I use
+ *   partitioningBy with the predicate, one O(n) pass, and it always returns both the true and
+ *   the false key, while groupingBy on a boolean leaves out a side that has no elements. For
+ *   count, min, max, sum and average I use summarizingDouble, one pass and O(1) extra space,
+ *   instead of four streams. Above or below average still needs two passes, because the
+ *   average has to exist before I can compare against it."
+ *
+ * TRAP
+ *   ! groupingBy(x -> x % 2 == 0) mein khaali side ki key hi nahi hoti: get(true) null deta hai
+ *     aur .size() pe NullPointerException.
+ *   ! Khaali stream pe DoubleSummaryStatistics min = Infinity, max = -Infinity, average = 0.0
+ *     deta hai, exception nahi; getCount() pehle check karo.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? All numbers are odd -- what does each version return for get(true)?
+ *     -> partitioningBy khaali list [] deta hai, groupingBy null (case 2 ka output dekho).
  *   ? Statistics per department, partitioned by above/below the company average.
+ *     -> Pehle pass mein company average. Doosre pass mein groupingBy(dept, partitioningBy(
+ *        sal >= avg, summarizingDouble(Employee::getSalary))); collectors nest ho jaate hain.
  *   ? Can you partition and summarise in one collector?
+ *     -> Haan: partitioningBy(predicate, summarizingDouble(Employee::getSalary)). Downstream
+ *        collector dono side ke stats ek hi pass mein deta hai.
  *   ? Why is there no partitioningBy with a map supplier?
+ *     -> Key sirf do hain (true/false), JDK andar apna chhota Partition map use karta hai aur
+ *        map type ki koi guarantee nahi deta. Doosra type chahiye to result copy kar lo.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Split pass / fail
  *   - Above / below average
  *   - Active vs inactive records
  *   - Min, max, average, count in one pass
+ *
+ * JAVA 21 MEIN
+ *   - Collectors.teeing (Java 12) do alag collectors ek hi pass mein chalata hai aur dono ka
+ *     result jodta hai, e.g. teeing(counting(), averagingDouble(...), (n, avg) -> ...).
+ *
+ * APNI STORY SE JODO
+ *   "I work in fintech and remittance, so I would add that summarizingDouble is fine for this
+ *   demo, but for money I would use BigDecimal and sum with reduce(BigDecimal.ZERO,
+ *   BigDecimal::add), because double gives rounding errors."
+ *   Note: ye sirf domain se jodta hai; koi project detail ya number mat jodo.
+ *
+ * VARIANTS     : classic -- pass / fail split, salary stats per department
  * ============================================================================================== */
 
 import java.util.*;

@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : EASY     (1 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- ExecutorService, Future aur shutdown har round mein poochte hain
  * TECHNIQUE    : ExecutorService with Callable/Future, timed get, and the two-phase shutdown
  *
  * PROBLEM
@@ -38,12 +39,42 @@
  *   silently breaks every cancellation mechanism above you. The two-phase shutdown is
  *   asked verbatim -- memorise it.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Callable value return karta hai aur checked exception throw kar sakta hai, Runnable nahi.
+ *   Future.get() hamesha timeout ke saath, warna thread hamesha ke liye atak sakta hai.
+ *   Task ka asli exception ExecutionException ke getCause() mein hota hai. Shutdown do step
+ *   mein: shutdown() aur wait, phir shutdownNow() aur dobara wait.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The naive way is new Thread().start(), but that gives me no result, no pooling and no
+ *   lifecycle. I submit a Callable to an ExecutorService and read the Future with a timed get,
+ *   because an untimed get can block a request thread forever. A failure comes back wrapped
+ *   in ExecutionException, so I unwrap getCause(), and on InterruptedException I restore the
+ *   flag. To stop the pool I call shutdown, await with a deadline, then shutdownNow - which
+ *   only interrupts, so my tasks must check the interrupt flag."
+ *
+ * TRAP
+ *   ! catch (InterruptedException e) {} khaali chhod diya to cancel(true) aur shutdownNow dono
+ *     bekaar ho jaate hain. Hamesha Thread.currentThread().interrupt() karo.
+ *   ! submit() exception ko Future mein chhupa deta hai. get() kabhi call nahi kiya to error
+ *     kahin print nahi hoga.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? What is in e.getCause(), and why is the wrapper there?
+ *     -> getCause() mein task ka asli exception hai. Wrapper se pata chalta hai ki failure task
+ *        ke andar hua, get() mein nahi; aur get() ko har checked type declare nahi karna padta.
  *   ? Why restore the interrupt flag instead of swallowing it?
+ *     -> InterruptedException throw hote hi flag clear ho jata hai. Wapas set nahi kiya to upar
+ *        ka code (pool, framework) kabhi jaan nahi payega ki cancel hua tha.
  *   ? shutdown vs shutdownNow -- what happens to queued tasks in each?
+ *     -> shutdown(): naye task reject, queued aur running dono poore chalte hain. shutdownNow():
+ *        running ko interrupt, queued tasks nahi chalte, unki List<Runnable> return hoti hai.
  *   ? Your task ignores interrupts -- what does shutdownNow achieve?
+ *     -> Kuch nahi, interrupt sirf ek flag hai. Task chalta rahega, awaitTermination false
+ *        dega, aur non-daemon thread JVM ko exit nahi karne dega.
  *   ? Where does an exception go if you use execute() instead of submit()?
+ *     -> Worker thread mar jata hai aur exception UncaughtExceptionHandler tak jata hai
+ *        (default: stderr pe stack trace). Pool uski jagah naya thread bana leta hai.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Runnable vs Callable
@@ -51,6 +82,21 @@
  *   - Graceful shutdown
  *   - Task cancellation
  *   - InterruptedException handling
+ *
+ * JAVA 21 MEIN
+ *   - ExecutorService ab AutoCloseable hai (Java 19 se): try-with-resources ka close() shutdown
+ *     karke saare tasks khatam hone tak wait karta hai. Uska koi timeout nahi hai, to deadline
+ *     chahiye to upar wala two-phase shutdown hi likho.
+ *   - Future.state(), resultNow() aur exceptionNow() (Java 19 se) complete future ka result
+ *     bina checked exception ke dete hain.
+ *
+ * APNI STORY SE JODO
+ *   "My services run on AKS, so a rolling deploy stops pods, and in-flight work has to finish
+ *   or go back to the queue before the JVM exits."
+ *   Note: [bhar do: hamare consumers aur @Scheduled jobs shutdown par kaise rukte the]. Koi
+ *   number mat bolo.
+ *
+ * VARIANTS     : classic - invokeAll / invokeAny with a deadline, cancel a long-running task
  * ============================================================================================== */
 
 import java.util.concurrent.*;

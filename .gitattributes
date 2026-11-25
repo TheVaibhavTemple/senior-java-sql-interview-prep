@@ -1,0 +1,6 @@
+# Keep shell scripts LF on every OS, so ./run-java.sh works in Git Bash on Windows too.
+*.sh   text eol=lf
+*.py   text eol=lf
+*.java text
+*.sql  text
+*.md   text

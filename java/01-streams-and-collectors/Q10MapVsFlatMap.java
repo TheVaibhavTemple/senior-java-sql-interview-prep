@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- map vs flatMap har Java round ka basic sawaal hai
  * TECHNIQUE    : flatMap - one-to-many mapping followed by concatenation
  *
  * PROBLEM
@@ -35,11 +36,39 @@
  *   memorised flatMap from people who understand it -- you map each element to several
  *   intermediate pairs, then group.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   map ek element se ek hi result banata hai. flatMap har element se ek stream banata hai aur
+ *   sab streams ko jod ke ek flat stream deta hai. List<List<T>> pe map se Stream<Stream<T>>
+ *   milta hai, flatMap(List::stream) se Stream<T>. Relation ulta karna ho to pehle (skill,
+ *   naam) pairs banao, phir groupingBy.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "I could flatten with two nested loops into one list, but the stream way is flatMap. map
+ *   is one-to-one, so on a list of lists it gives a Stream of Streams; flatMap maps each
+ *   element to a stream and concatenates them, so flatMap(List::stream) gives one flat stream
+ *   in O(n) time and O(n) space for the result. To invert employee to skills, I flatMap each
+ *   employee into (skill, name) pairs and then group by skill. One trade-off: flatMap creates
+ *   a small stream per element, and mapMulti in Java 16 avoids that."
+ *
+ * TRAP
+ *   ! map(List::stream) compile ho jata hai; error tab aata hai jab result ko List<Integer>
+ *     mein collect karte ho, kyunki milta Stream<Stream<Integer>> hai.
+ *   ! Pairs banate waqt employee ka naam chahiye, isliye pair wala map flatMap ke ANDAR lagao;
+ *     bahar lagaya to e scope mein hi nahi rehta.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? When would you use mapMulti (Java 16) instead?
+ *     -> Jab har element se 0 ya thode hi elements nikalte hain, ya if/loop se push karna aasaan
+ *        ho; har element ke liye naya Stream nahi banta. Type do: .<String>mapMulti(...).
  *   ? Optional.map vs Optional.flatMap -- show the nesting difference.
+ *     -> Mapper khud Optional return kare to map Optional<Optional<T>> deta hai aur flatMap
+ *        Optional<T>; code ka case 5 dekho.
  *   ? Does flatMap close the substreams it creates? Does it matter for Files.lines?
+ *     -> Haan, har inner stream use hone ke baad close hota hai, to flatMap ke andar Files.lines
+ *        safe hai. Par sabse bahar wala Files.lines stream try-with-resources mein hi kholo.
  *   ? Flatten a three-level nested structure.
+ *     -> Har level ke liye ek flatMap: flatMap(List::stream).flatMap(List::stream). Depth pata
+ *        na ho to recursive helper: List mile to uske elements pe khud ko call kare.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Flatten nested collections
@@ -47,6 +76,12 @@
  *   - All skills / tags across records
  *   - Invert a one-to-many relation
  *   - Cartesian product
+ *
+ * JAVA 21 MEIN
+ *   - Case 6 Java 9 se ek step hai: flatMap(Optional::stream), filter + get ki zarurat nahi.
+ *   - Java 16 se collect(Collectors.toList()) ki jagah .toList(), par woh list unmodifiable hai.
+ *
+ * VARIANTS     : LC 341 (flatten nested list iterator); classic -- Cartesian product, invert a map
  * ============================================================================================== */
 
 import java.util.*;

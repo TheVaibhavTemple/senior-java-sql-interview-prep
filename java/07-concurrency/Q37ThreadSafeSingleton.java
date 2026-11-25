@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- singleton aur DCL service aur product dono companies mein aata hai
  * TECHNIQUE    : Initialization-on-demand holder; enum singleton; double-checked locking with volatile
  *
  * PROBLEM
@@ -44,13 +45,42 @@
  *   you would actually ship, and be ready to say why enum defeats reflection: the JVM
  *   refuses to construct enum instances reflectively.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Singleton matlab ek classloader mein class ka ek hi object. Ship karne ke liye do: enum
+ *   (reflection aur serialization se safe) ya holder idiom (lazy, bina lock ke). DCL tabhi
+ *   sahi hai jab field volatile ho, warna doosra thread aadha bana object dekh sakta hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A synchronized getInstance is correct but takes a lock on every call, forever. I would
+ *   ship either an enum, which the JVM protects from reflection and serialization, or the
+ *   holder idiom, where class loading gives me lazy, lock-free initialization. If they want
+ *   double-checked locking, the field must be volatile, otherwise the reference can be
+ *   published before the constructor finishes. Every call after the first is then a single
+ *   volatile read."
+ *
+ * TRAP
+ *   ! DCL bina volatile ke likha to seedha minus. Reason bolo: constructor ki writes aur
+ *     reference assign reorder ho sakte hain.
+ *   ! Private constructor reflection se nahi bachata, setAccessible(true) se naya object ban
+ *     jata hai. Constructor mein guard lagao ya enum lo.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Exactly what can be reordered without volatile? Name the two steps.
+ *     -> new mein: memory allocate, constructor ki field writes, reference assign. Bina volatile
+ *        field writes aur reference publish reorder ho sakte hain; reader ko default values.
  *   ? How does reflection break a private-constructor singleton, and how does enum stop
  *     it?
+ *     -> getDeclaredConstructor() + setAccessible(true) private constructor bhi chala deta hai.
+ *        Enum ke liye Constructor.newInstance khud IllegalArgumentException phenkta hai.
  *   ? Why does deserialization create a second instance, and what is readResolve?
+ *     -> readObject constructor ke bina naya object bana deta hai. readResolve() se INSTANCE
+ *        return karo to wahi object milta hai. Enum naam se serialize hota hai, safe hai.
  *   ? Singleton across multiple classloaders -- still a singleton?
+ *     -> Nahi. Class ki identity = naam + classloader, to har classloader ka apna instance.
+ *        App server aur hot reload mein ye hota hai.
  *   ? Is a Spring singleton the same thing?
+ *     -> Nahi. Spring singleton ek container mein ek bean definition ka ek object hai; new se
+ *        aur bana sakte ho. Thread-safe tabhi hai jab usmein mutable state na ho.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Double-checked locking
@@ -58,6 +88,9 @@
  *   - Safe publication
  *   - readResolve and serialization
  *   - Class loading and initialization
+ *
+ * VARIANTS     : classic - Bill Pugh holder, enum singleton, serialization-safe singleton
+ *                with readResolve
  * ============================================================================================== */
 
 import java.lang.reflect.Constructor;

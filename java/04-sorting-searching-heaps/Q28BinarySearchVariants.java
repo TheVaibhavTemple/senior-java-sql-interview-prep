@@ -4,6 +4,7 @@
  * TRACK        : Sorting, Searching & Heaps
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- binary search, first/last occurrence lagbhag har DSA round mein
  * TECHNIQUE    : Half-open binary search [lo, hi); lower bound; search on the answer space
  *
  * PROBLEM
@@ -27,7 +28,7 @@
  *       > Correct, but the stack frames buy nothing.
  *   Iterative, half-open [lo, hi)                  O(log n)      O(1)      WRITE THIS
  *       > The form with no off-by-one ambiguity.
- *   Binary search on the ANSWER space              O(n log range O(1)      WRITE THIS
+ *   Binary search on the ANSWER space              O(n log max)  O(1)      WRITE THIS
  *       > The senior variant: search over possible answers, not over the array.
  *
  * WHY THIS ONE
@@ -37,11 +38,38 @@
  *   answer" is the variant that separates mid from senior, because the array is not what
  *   you are searching at all.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Hamesha ek hi shape likho: lo = 0, hi = n, while (lo < hi). Har variant mein sirf
+ *   comparison badalta hai, loop nahi. lowerBound = pehla index jahan a[i] >= target; usi se
+ *   first, last aur insert position nikal aate hain. Answer-space mein array nahi, possible
+ *   answers search karte ho, ek "kya ye chalega?" check ke saath.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A linear scan is O(n) and ignores that the array is sorted, so I write one iterative,
+ *   half-open binary search: lo = 0, hi = n, loop while lo < hi, and mid = lo + (hi - lo) / 2
+ *   so it cannot overflow. That is O(log n) time and O(1) space, and first and last occurrence
+ *   both come from the same bound functions. For a rotated array one half is always sorted,
+ *   so I check which one and whether the target lies inside it. I test an empty array, a
+ *   missing target and a target outside the range."
+ *
+ * TRAP
+ *   ! Ek hi form rakho. [lo, hi) aur lo <= hi ko mix kiya to infinite loop ya element miss.
+ *   ! Last occurrence ke liye lowerBound(t + 1) t = Integer.MAX_VALUE par overflow karta hai;
+ *     isliye code upperBound(t) - 1 use karta hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why lo + (hi - lo) / 2 and not (lo + hi) / 2?
+ *     -> lo + hi int limit (2^31 - 1) cross karke negative ho sakta hai; hi - lo kabhi overflow
+ *        nahi karta. JDK ka Arrays.binarySearch (low + high) >>> 1 use karta hai.
  *   ? Derive first-occurrence and last-occurrence from lowerBound.
+ *     -> first = lowerBound(t), phir a[i] == t check. last = lowerBound(t + 1) - 1, par MAX_VALUE
+ *        par overflow, to upperBound(t) - 1 behtar. Count = upperBound - lowerBound.
  *   ? Rotated array WITH duplicates -- what is the worst case now, and why?
+ *     -> O(n). Jab a[lo] == a[mid] == a[hi] ho to pata nahi chalta kaunsa half sorted hai; tab
+ *        sirf lo++ aur hi-- kar sakte ho. Jaise [1,1,1,1,0,1,1].
  *   ? How do you recognise a "binary search on the answer" problem?
+ *     -> "Minimum X jisse kaam ho jaye" ya "maximum X" type sawaal, jahan check monotonic ho:
+ *        speed k chal gayi to k+1 bhi chalegi. Answer ki range pata ho aur check O(n) ho.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Search insert position
@@ -51,6 +79,9 @@
  *   - Koko eating bananas
  *   - Split array largest sum
  *   - Search a 2D matrix
+ *
+ * VARIANTS     : LC 704, LC 35, LC 34, LC 33, LC 81, LC 153, LC 162, LC 74, LC 875, LC 1011,
+ *                LC 410
  * ============================================================================================== */
 
 import java.util.*;
@@ -83,8 +114,18 @@ public class Q28BinarySearchVariants {
         return (i < a.length && a[i] == t) ? i : -1;
     }
 
+    /* ---- UPPER BOUND : first index with a[i] > target. No t + 1, so no overflow. ---- */
+    static int upperBound(int[] a, int target) {
+        int lo = 0, hi = a.length;
+        while (lo < hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (a[mid] <= target) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+    }
+
     static int lastOccurrence(int[] a, int t) {
-        int i = lowerBound(a, t + 1) - 1;
+        int i = upperBound(a, t) - 1;     // not lowerBound(a, t + 1): t + 1 overflows at MAX_VALUE
         return (i >= 0 && a[i] == t) ? i : -1;
     }
 

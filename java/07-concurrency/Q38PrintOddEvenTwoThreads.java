@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- India mein sabse common multithreading coding sawaal
  * TECHNIQUE    : Monitor coordination with wait/notifyAll; Semaphore turn-passing as the alternative
  *
  * PROBLEM
@@ -16,7 +17,8 @@
  *   3. The while loop is required because of spurious wakeups and because the condition can
  *      change again.
  *   4. After printing and incrementing, call notifyAll to release the partner.
- *   5. Also notifyAll on the exit path or the partner waits forever at the end.
+ *   5. The wait condition must also check number <= max, or the partner waits forever at
+ *      the end. The notifyAll on the exit path is a safety net on top of that.
  *
  * APPROACHES  (what to compare out loud before you write a line)
  *   APPROACH                                       TIME          SPACE     VERDICT
@@ -28,23 +30,53 @@
  *   wait / notifyAll on a shared monitor           --            --        WRITE THIS
  *       > What the question is actually testing.
  *   Two Semaphores passing the turn                --            --        WRITE THIS
- *       > Shorter, and it extends to N threads by adding permits.
+ *       > Shorter, and it extends to N threads with one semaphore per thread.
  *   ReentrantLock with two Conditions              --            --        acceptable
  *       > Equivalent to the semaphore version, more ceremony.
  *
  * WHY THIS ONE
  *   Two things are graded: wait() inside a WHILE loop and not an if -- because of spurious
  *   wakeups and because the condition can be falsified again between the notify and the
- *   reacquire -- and notifyAll rather than notify, because there are two distinct waiters
- *   and notify might wake the wrong one, stalling both. Also remember the final notifyAll,
- *   or the partner waits forever at the end.
+ *   reacquire -- and notifyAll rather than notify. With exactly two threads notify happens to
+ *   work, because the only waiter is the partner; with three or more it can wake the wrong
+ *   thread and stall everybody, so notifyAll is the safe default. Also put number <= max in
+ *   the wait condition, or the partner waits forever at the end.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Dono threads ek lock aur ek counter share karte hain. Jiski baari nahi hai wo while loop
+ *   mein wait() karta hai. Print karo, counter badhao, notifyAll() karo. Wait condition mein
+ *   number <= max bhi rakho, taaki end mein partner atke nahi.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Busy-waiting on a flag gives the right output but burns a core, so I use one shared lock
+ *   with wait and notifyAll. Each thread waits in a while loop until the counter's parity is
+ *   its turn, prints, increments and calls notifyAll, so it is O(N) handoffs with constant
+ *   space. The while loop covers spurious wakeups, and the wait condition also checks
+ *   number <= max so both threads exit cleanly at the end. A two-semaphore version is
+ *   shorter and extends to N threads with one semaphore per thread."
+ *
+ * TRAP
+ *   ! wait() if mein rakha to spurious wakeup ya galat notify ke baad thread bina check kiye
+ *     print kar dega. Hamesha while.
+ *   ! Wait condition sirf parity dekhe aur number <= max na dekhe, to aakhri number ke baad
+ *     partner hamesha wait karega: output sahi, program hang.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why while and not if? Give a concrete interleaving that breaks the if version.
+ *     -> 3 threads: A ka notifyAll B aur C dono ko jagata hai, C pehle lock le leta hai. if
+ *        dobara check nahi karta, to C B ki baari mein print kar deta hai.
  *   ? Why notifyAll and not notify here?
+ *     -> Sirf do threads mein notify bhi chal jata hai, wait set mein sirf partner hota hai.
+ *        Teen ya zyada mein notify galat thread jaga sakta hai aur sab atak jaate hain.
  *   ? Extend to three threads printing 1, 2, 3, 1, 2, 3 in order.
+ *     -> Turn = number % 3. Har thread apne slot ka wait kare, print ke baad notifyAll. Code:
+ *        ThreeWayPrinter section.
  *   ? What happens at the end if you forget the final notifyAll?
+ *     -> Is code mein kuch nahi: aakhri print ka notifyAll partner ko jagata hai aur wo
+ *        number > max dekh ke nikal jata hai. Hang tab hota hai jab condition mein max na ho.
  *   ? Can you do it with a single Semaphore?
+ *     -> Saaf tareeke se nahi: ek semaphore ko pata nahi baari kiski hai, dono same permit pe
+ *        race karenge. Turn variable jodo to retry loop (spin) ban jata hai. Do semaphores lo.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Print 1..N with three threads
@@ -52,6 +84,8 @@
  *   - Alternate printing of characters
  *   - Turn-taking between threads
  *   - FooBar printing
+ *
+ * VARIANTS     : LC 1114, LC 1115, LC 1116, LC 1195
  * ============================================================================================== */
 
 public class Q38PrintOddEvenTwoThreads {

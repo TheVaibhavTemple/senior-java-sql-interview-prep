@@ -70,3 +70,20 @@ INSERT INTO logins (login_id, user_id, login_at) VALUES
  (6,7,'2025-05-02 08:10:00'), (7,7,'2025-05-03 08:15:00'), (8,7,'2025-05-04 20:01:00'),
  (9,7,'2025-05-05 07:45:00'),                                -- 5 consecutive days: 01..05
  (10,8,'2025-05-01 10:00:00'), (11,8,'2025-05-03 10:00:00'), (12,8,'2025-05-04 10:00:00');
+
+-- S24 reconciliation. Every outcome is here once:
+--   TXN1001, 1003, 1004 match  |  TXN1005 typo (25000 vs 2500)  |  TXN1006 off by 50 (tolerance)
+--   TXN1007, 1008 only in bank  |  TXN1009, 1010 only in ledger
+--   TXN1002 is posted TWICE in the ledger (double posting)  |  TXN1003 posts a day late
+INSERT INTO bank_statement (stmt_id, txn_ref, value_date, amount) VALUES
+ (1,'TXN1001','2025-06-02', 50000), (2,'TXN1002','2025-06-02', 12000),
+ (3,'TXN1003','2025-06-03',  7500), (4,'TXN1004','2025-06-03', 30000),
+ (5,'TXN1005','2025-06-04', 25000), (6,'TXN1006','2025-06-04', 15000),
+ (7,'TXN1007','2025-06-05',  9000), (8,'TXN1008','2025-06-05',  4200);
+
+INSERT INTO ledger (entry_id, txn_ref, posted_date, amount) VALUES
+ (1,'TXN1001','2025-06-02', 50000), (2,'TXN1002','2025-06-02', 12000),
+ (3,'TXN1002','2025-06-02', 12000),                          -- duplicate posting
+ (4,'TXN1003','2025-06-04',  7500), (5,'TXN1004','2025-06-03', 30000),
+ (6,'TXN1005','2025-06-04',  2500), (7,'TXN1006','2025-06-04', 14950),
+ (8,'TXN1009','2025-06-05',  6100), (9,'TXN1010','2025-06-06',  1800);

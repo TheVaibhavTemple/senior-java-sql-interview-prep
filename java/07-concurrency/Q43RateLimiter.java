@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- fintech aur API rounds mein aata hai, LLD round mein bhi
  * TECHNIQUE    : Token bucket backed by a Semaphore; sliding-window log per key
  *
  * PROBLEM
@@ -42,12 +43,42 @@
  *   distributed version before they ask, because in a microservice this lives in Redis,
  *   not in a JVM.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Fixed window counter boundary par 2N requests jaane deta hai, ye flaw sabse pehle bolo.
+ *   Token bucket: tokens ek rate se bharte hain, burst size par cap. Per user exact limit ke
+ *   liye sliding window log. Kai instances hon to state Redis mein, JVM mein nahi.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A fixed-window counter is the naive answer, but it lets 2N requests through across a
+ *   window boundary. For a global limit I use a token bucket: a Semaphore holds up to burst
+ *   tokens, a refill task adds one per period with a cap, and tryAcquire is an O(1)
+ *   non-blocking check. Per user I keep a sliding-window log of timestamps, which is exact
+ *   but costs memory proportional to the limit for every key. Across instances the state
+ *   moves to Redis, with a Lua script so the read, check and update happen atomically."
+ *
+ * TRAP
+ *   ! Refill par cap nahi lagaya to idle service unlimited tokens jama kar leti hai, phir ek
+ *     bada burst nikalta hai.
+ *   ! Har key ke liye refill thread mat chalao. Per-user bucket mein last refill time rakho
+ *     aur request aane par tokens calculate karo (lazy refill).
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? What is wrong with a fixed-window counter?
+ *     -> Window ke end par N aur agle window ke start par N: 2 ms mein 2N requests. Demo ki
+ *        "fixed window FLAW" line yahi dikhati hai.
  *   ? Why cap the bucket in the refill task?
+ *     -> Semaphore.release() initial permits se upar bhi badha deta hai. Cap ke bina lambe
+ *        idle time ke baad bahut bada burst nikal jayega.
  *   ? Make it work across 10 instances -- what changes?
+ *     -> Har instance ko N/10 de sakte ho, par load uneven ho to galat. Sahi tareeka: shared
+ *        counter ya bucket Redis mein, ya limit API gateway par.
  *   ? Implement it in Redis. Why does it need a Lua script?
+ *     -> Read, refill, check aur write alag commands hain; beech mein doosra instance aa sakta
+ *        hai. Lua script Redis par atomically chalti hai, aur ek hi round trip lagta hai.
  *   ? Rate limiter vs bulkhead vs circuit breaker -- when each?
+ *     -> Rate limiter: time ke hisaab se requests cap. Bulkhead: ek dependency ke concurrent
+ *        calls cap, taaki wo saare threads na kha le. Circuit breaker: fail hoti dependency
+ *        ko call band, fail fast, phir half-open probe.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Throttling and backpressure
@@ -55,6 +86,14 @@
  *   - Semaphore use cases
  *   - Distributed rate limiting
  *   - API gateway design
+ *
+ * APNI STORY SE JODO
+ *   "I have worked with a rate limiter at work, and we use Redis, so I can talk about both
+ *   the in-JVM version and the shared one."
+ *   Note: [bhar do: limiter kahan laga tha aur kaunsa algorithm tha]. Scale ka koi number
+ *   mat banao.
+ *
+ * VARIANTS     : LC 359 (Logger Rate Limiter), LC 362 (Design Hit Counter)
  * ============================================================================================== */
 
 import java.util.*;
@@ -123,13 +162,14 @@ public class Q43RateLimiter {
         boolean allow(String key) { return allow(key, System.currentTimeMillis()); }
     }
 
-    /* ---- THE FLAW to name out loud : fixed window ---- */
+    /* ---- THE FLAW to name out loud : fixed window, aligned to the clock ---- */
     static final class FixedWindowLimiter {
         private final int limit; private final long windowMs;
-        private long windowStart = 0; private int count = 0;
+        private long currentWindow = -1; private int count = 0;
         FixedWindowLimiter(int limit, long windowMs) { this.limit = limit; this.windowMs = windowMs; }
         synchronized boolean allow(long now) {
-            if (now - windowStart >= windowMs) { windowStart = now; count = 0; }
+            long window = now / windowMs;           // 1000-1999 is window 1, 2000-2999 is 2
+            if (window != currentWindow) { currentWindow = window; count = 0; }
             return count++ < limit;
         }
     }
@@ -181,6 +221,6 @@ public class Q43RateLimiter {
  * blocking acquire : true
  * sliding window   : YYYnYY   (3 per 1000ms; the 4th at +300 is rejected, +1100 is a fresh window)
  * per-key isolated : Y   (a different user is unaffected)
- * fixed window FLAW: 3 requests allowed across a 2ms boundary, limit was 3/sec
+ * fixed window FLAW: 6 requests allowed across a 2ms boundary, limit was 3/sec
  * DISTRIBUTED      : across N instances this must move to Redis (INCR + EXPIRE, or a Lua script for atomicity)
  * ============================================================================================== */

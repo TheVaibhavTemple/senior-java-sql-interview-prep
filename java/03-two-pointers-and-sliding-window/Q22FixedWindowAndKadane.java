@@ -4,6 +4,7 @@
  * TRACK        : Two Pointers & Sliding Window
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- Kadane aur fixed window dono service aur product rounds mein common
  * TECHNIQUE    : Fixed-size window slide; Kadane's extend-or-restart decision
  *
  * PROBLEM
@@ -35,11 +36,36 @@
  *   "return the subarray" version, which is almost always the follow-up. Best-time-to-buy-
  *   and-sell is the same loop with min instead of a running sum.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Fixed window: pehle k ka sum, phir har step naya add aur purana minus. Dobara mat jodo.
+ *   Kadane: har index pe ek hi sawaal: purane run mein judun ya yahin se naya shuru karun?
+ *   cur = max(a[i], cur + a[i]); best alag rakho. Restart index note karo to range milti hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "For a fixed window of size k, recomputing every window is O(n*k), so I sum the first
+ *   window once and then add the new element and drop the old one: O(n) time, O(1) space.
+ *   For the maximum subarray of any length, checking all subarrays is O(n^2); Kadane
+ *   decides at each index whether to extend the current run or restart there, in one pass
+ *   with two variables. I seed best with the first element, not zero, so an all-negative
+ *   array returns its largest element instead of a wrong zero."
+ *
+ * TRAP
+ *   ! best = 0 se seed kiya to all-negative array pe 0 aata hai, jo galat hai. a[0] se seed.
+ *   ! Empty array (a[0]) aur k > n pe ArrayIndexOutOfBounds; input pehle validate karo.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Return the subarray, not the sum.
+ *     -> Restart pe start index s = i note karo; best update ho to (s, i) save karo.
+ *        Code: maxSubArrayRange().
  *   ? All numbers are negative -- what does your code return, and is that right?
+ *     -> Sabse bada (least negative) element, jaise [-5,-2,-9] pe -2. Sahi hai jab subarray
+ *        non-empty hona chahiye; empty allowed ho to answer 0.
  *   ? Maximum PRODUCT subarray -- why can't you reuse Kadane directly?
+ *     -> Negative x negative = positive, to aaj ka min kal ka max ban sakta hai. Har step pe
+ *        max aur min dono track karo; a[i] negative ho to dono swap. O(n).
  *   ? Circular subarray, where the array wraps around.
+ *     -> Answer = max(normal Kadane, total - minimum subarray). Sab negative hon to total -
+ *        min = 0 (khali) aata hai; tab normal Kadane hi lautao.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Maximum subarray
@@ -47,6 +73,8 @@
  *   - Maximum average subarray
  *   - Max product subarray
  *   - Circular maximum subarray
+ *
+ * VARIANTS     : LC 53, LC 121, LC 643, LC 152, LC 918
  * ============================================================================================== */
 
 import java.util.*;

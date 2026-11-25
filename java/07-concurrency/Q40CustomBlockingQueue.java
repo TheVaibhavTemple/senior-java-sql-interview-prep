@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- product aur fintech rounds mein "apna BlockingQueue likho" aata hai
  * TECHNIQUE    : ReentrantLock with two Conditions over a circular array buffer
  *
  * PROBLEM
@@ -38,12 +39,40 @@
  *   watch for is awaitNanos returning the REMAINING time -- restarting the clock each loop
  *   turns a timed offer into an unbounded wait.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Ek array, head, tail aur count; sab ek ReentrantLock ke neeche. Full ho to notFull pe
+ *   await, khali ho to notEmpty pe await. Do Conditions hain to signal() sirf sahi type ka ek
+ *   thread jagata hai. Timed offer mein awaitNanos ka bacha hua time hi wapas do.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "synchronized with wait and notifyAll works, but every state change wakes every waiter.
+ *   I use one ReentrantLock with two Conditions, notFull and notEmpty, over a circular array,
+ *   so put and take are O(1) with no shifting and memory is fixed at the capacity. Each
+ *   Condition holds only one kind of waiter, so signal wakes exactly one thread that can
+ *   proceed. For the timed offer I feed the remaining nanos from awaitNanos back into the
+ *   loop, otherwise every wakeup restarts the clock."
+ *
+ * TRAP
+ *   ! unlock() finally mein nahi rakha to ek exception aur lock hamesha ke liye pakda rahega.
+ *   ! await() if mein rakha to spurious wakeup par full array mein likh doge. awaitNanos ka
+ *     return ignore kiya to har wakeup par clock restart, timed offer unbounded ban jata hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why two Conditions instead of one? What does it save?
+ *     -> Producers aur consumers alag wait set mein rehte hain, to signalAll ki jagah signal()
+ *        kaafi hai. Faltu wake-ups aur context switch bachte hain.
  *   ? Why signal() here but notifyAll() in the wait/notify version?
+ *     -> notEmpty pe sirf consumers wait karte hain, koi bhi jage to kaam kar sakta hai. Ek
+ *        monitor mein notify galat type ko jaga sakta hai, isliye wahan notifyAll.
  *   ? Why does awaitNanos return a value, and what if you ignore it?
+ *     -> Wo bacha hua time return karta hai. Ignore karke wahi timeout dobara diya to har
+ *        wakeup par clock reset hoga, aur offer kabhi time out nahi bhi ho sakta.
  *   ? Where exactly must unlock() go, and why?
+ *     -> lock() try ke bahar, unlock() finally mein. Exception aaye to bhi lock chhoote; aur
+ *        lock lene mein hi interrupt aaya to finally galat unlock() na kare.
  *   ? How would the real ArrayBlockingQueue differ from what you wrote?
+ *     -> null reject karta hai (NPE), fair lock ka option deta hai, aur poll, drainTo,
+ *        remainingCapacity aur weakly consistent iterator ke saath poora BlockingQueue API.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - ArrayBlockingQueue internals
@@ -51,6 +80,8 @@
  *   - Circular buffer
  *   - Bounded buffer
  *   - Custom thread-safe collections
+ *
+ * VARIANTS     : LC 1188 (Design Bounded Blocking Queue)
  * ============================================================================================== */
 
 import java.util.concurrent.*;

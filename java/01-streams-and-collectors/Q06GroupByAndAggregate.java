@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- "per department" wale sawal har round mein; poori Collectors class yahin
  * TECHNIQUE    : Collectors.groupingBy with downstream collectors (counting, averaging, mapping, summarizing, nested groupingBy)
  *
  * PROBLEM
@@ -34,12 +35,40 @@
  *   mapping, summingInt, averagingDouble, summarizing, or another groupingBy. Once that
  *   clicks, every "per X" question is the same question.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   groupingBy ke teen hisse: kis field se group (classifier), kaunsa map (sorted chahiye to
+ *   TreeMap::new), aur har group ka kya karna hai (downstream). Downstream mein counting,
+ *   averagingDouble, mapping, ya ek aur groupingBy. Yeh samjha to har "per X" sawal same hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A loop with computeIfAbsent works, but one stream per aggregate would mean k passes, so
+ *   I use groupingBy. The department is the classifier, TreeMap::new gives sorted keys, and
+ *   the downstream folds each group: counting, averagingDouble, mapping, or
+ *   summarizingDouble for count, sum, min, average and max in one pass. That is O(n) time
+ *   and O(n) space, plus a log factor on the department count for the TreeMap. One trap I
+ *   watch: filtering before grouping drops departments with no match."
+ *
+ * TRAP
+ *   ! filter() groupingBy se pehle lagaya to jis department mein koi match nahi, woh map se
+ *     gayab. Department chahiye to Collectors.filtering downstream mein (empty pe avg 0.0).
+ *   ! groupingBy null key pe NPE deta hai ("element cannot be mapped to a null key").
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Get departments in sorted order -- where does TreeMap::new go?
+ *     -> Beech wala argument: groupingBy(classifier, TreeMap::new, downstream). Is form mein
+ *        downstream dena hi padta hai, sirf list chahiye to toList().
  *   ? Return an unmodifiable Map of unmodifiable Lists.
+ *     -> Andar collectingAndThen(toList(), List::copyOf) (section 7 jaisa), bahar poore
+ *        groupingBy ko Collections::unmodifiableMap se wrap karo. Map.copyOf order kho deta hai.
  *   ? Average salary per department, but only for employees above 30.
+ *     -> Section 6: pehle filter, phir groupingBy, par 30+ ke bina wala dept gayab. Rakhna ho to
+ *        groupingBy(dept, filtering(e -> e.getAge() > 30, averagingDouble(...))).
  *   ? Which is faster on 10 million records: the loop or the collector? Why?
+ *     -> Dono O(n). Loop mein lambda aur Collector ka overhead nahi, to thoda tez ho sakta hai,
+ *        par JIT ke baad farak chhota hai. Andaaza mat lagao, JMH se measure karo.
  *   ? What does Collectors.mapping actually do here?
+ *     -> Group mein daalne se pehle har Employee ko uske name mein badalta hai, phir toList().
+ *        Group ke andar ka map(); result List<String> aata hai, List<Employee> nahi.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Count per category
@@ -47,6 +76,13 @@
  *   - Two-level grouping
  *   - Names joined per group
  *   - Partition then count
+ *
+ * JAVA 21 MEIN
+ *   Collectors.filtering (Java 9) filter ko downstream mein le jata hai, empty dept bhi rehta
+ *   hai. Collectors.toUnmodifiableList() (Java 10) seedha immutable list deta hai, bina
+ *   collectingAndThen ke.
+ *
+ * VARIANTS     : LC 49 (groupingBy on a sorted key); classic -- partitioningBy, joining per group
  * ============================================================================================== */
 
 import java.util.*;

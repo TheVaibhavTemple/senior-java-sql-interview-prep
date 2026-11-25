@@ -4,6 +4,7 @@
 -- TRACK        : Aggregation & Grouping
 -- DIFFICULTY   : EASY    (1 of 3)
 -- WEIGHTAGE    : HIGH    ***  asked in almost every round
+-- PRIORITY     : P1   -- WHERE vs HAVING aur NULL ka behaviour har round ka warm-up theory hai
 -- TECHNIQUE    : Logical clause order; NULL semantics in comparisons and aggregates
 --
 -- PROBLEM
@@ -21,27 +22,64 @@
 -- APPROACHES
 --   APPROACH                                     VERDICT       NOTE
 --   ---------------------------------------------------------------------------------------------
---   Filter rows in HAVING                        avoid         works, but kills index usage
+--   Filter rows in HAVING                        avoid         aggregates rows it then throws
+--                                                              away; push-down is up to the planner
 --   Filter rows in WHERE, groups in HAVING       WRITE THIS    smallest input to the aggregation
 --   x = NULL                                     avoid         always UNKNOWN; use IS NULL
---   NOT IN (list containing NULL)                avoid         returns no rows. See S23.
+--   NOT IN (list containing NULL)                avoid         returns no rows. See S21.
 --
 -- WHY THIS ONE
 --   This is the warm-up question that decides how deep the rest of the interview goes. The
 --   answer that lands is not the definition -- it is "WHERE runs before grouping so it shrinks
 --   the input, which is also why it is the faster place to filter".
 --
--- FOLLOW-UPS
+-- SAMJHO
+--   Order yaad rakho: FROM -> WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY.
+--   WHERE rows ko grouping se pehle chhaanta hai, isliye aggregate nahi dekh sakta. HAVING groups
+--   ko baad mein chhaanta hai. NULL koi value nahi: = NULL ya <> NULL hamesha UNKNOWN, IS NULL
+--   likho. COUNT(col) aur AVG NULL ko chhod dete hain, COUNT(*) nahi.
+--
+-- AISE BOLO  (30-40 sec)
+--   "WHERE filters rows before grouping and HAVING filters groups after aggregation, so a
+--   condition like COUNT(*) >= 2 can only go in HAVING. I keep every row-level filter in WHERE,
+--   because it shrinks the input to the GROUP BY and can use an index on that column. With NULLs,
+--   any comparison is UNKNOWN, so I use IS NULL, and I remember that COUNT(col) and AVG skip
+--   NULLs while COUNT(*) does not. The edge case I call out is NOT IN with a NULL in the list,
+--   which returns no rows at all."
+--
+-- TRAP
+--   ! dept_id = NULL kabhi match nahi karta (query 2: eq_null = 0, Farah ke hote hue bhi).
+--     IS NULL likho.
+--   ! AVG NULL ko 0 nahi maanta, skip karta hai. NULL ko 0 ginna ho to AVG(COALESCE(col, 0)).
+--
+-- FOLLOW-UPS KE JAWAB
 --   ? Move a row filter from WHERE into HAVING -- same result, what changes in the plan?
+--     -> Result same (column GROUP BY mein ho tab), par pehle saari rows aggregate hoti hain, phir
+--        filter. Postgres/Oracle simple predicate push-down kar dete hain; bharosa mat karo.
 --   ? Why does AVG(salary) ignore NULL rows instead of treating them as 0?
+--     -> NULL matlab "pata nahi", 0 nahi. AVG = SUM(non-NULL) / COUNT(non-NULL): query 4 mein
+--        10, 20, NULL ka AVG 15. Query 3 ka 109462 vs 109461 sirf integer division ka fark hai.
 --   ? What does COUNT(dept_id) return when some rows have no department?
+--     -> Sirf non-NULL: 12, jabki COUNT(*) 13 (Farah). COUNT(DISTINCT dept_id) bhi NULL chhodta
+--        hai: 3.
 --   ? Why does ORDER BY see a SELECT alias when WHERE does not?
+--     -> ORDER BY logically SELECT ke baad chalta hai, tab tak alias ban chuka hota hai. WHERE
+--        SELECT se pehle chalta hai.
 --
 -- ALSO UNLOCKS
 --   - COUNT(*) vs COUNT(col) vs COUNT(DISTINCT col)
 --   - NULL handling with COALESCE and NULLIF
 --   - Three-valued logic
 --   - Why NOT IN with NULL returns nothing
+--
+-- ORACLE / POSTGRES MEIN
+--   - Oracle mein '' (empty string) bhi NULL hai: WHERE email = '' kabhi match nahi karega.
+--     Postgres mein '' aur NULL alag hain.
+--   - Query 2 jaisa bina FROM ka SELECT: Oracle mein 23ai se pehle FROM dual chahiye.
+--   - Postgres aur Oracle HAVING mein SELECT ka alias nahi dekhte (SQLite aur MySQL dekh lete
+--     hain). Expression repeat karo.
+--
+-- VARIANTS     : LC 584 (the NULL comparison trap)
 -- ================================================================================================
 
 -- >>> QUERY: WHERE filters rows, HAVING filters groups -- both in one query
@@ -65,8 +103,18 @@ SELECT COUNT(*)                AS all_rows,
        SUM(salary) / COUNT(*)  AS manual_avg_all_rows
 FROM   employees;
 
+-- >>> QUERY: proof -- AVG skips NULL, it does not count it as 0
+WITH t(x) AS (VALUES (10), (20), (NULL))
+SELECT AVG(x)              AS avg_x,
+       SUM(x) / COUNT(*)   AS sum_over_all_rows,
+       AVG(COALESCE(x, 0)) AS avg_null_as_zero,
+       COUNT(x)            AS count_x,
+       COUNT(*)            AS count_star
+FROM   t;
+
 -- >>> QUERY: the rows an INNER JOIN drops because dept_id is NULL
-SELECT 'inner join' AS kind, COUNT(*) AS rows FROM employees e JOIN departments d ON d.dept_id = e.dept_id
+SELECT 'inner join' AS kind, COUNT(*) AS row_count
+FROM   employees e JOIN departments d ON d.dept_id = e.dept_id
 UNION ALL
 SELECT 'left join',  COUNT(*) FROM employees e LEFT JOIN departments d ON d.dept_id = e.dept_id
 UNION ALL
@@ -80,7 +128,7 @@ ORDER  BY headcount DESC, dept;
 
 -- ================= RESULTS ========================================================================
 -- Generated by run_all.py against 00-schema/01_schema.sql + 02_seed.sql
--- Engine: SQLite 3.53.1.  Fresh database per file, so each file reproduces standalone.
+-- Engine: SQLite 3.50.4.  Fresh database per file, so each file reproduces standalone.
 -- ----------------------------------------------------------------------------------------
 -- [WHERE filters rows, HAVING filters groups -- both in one query]
 --   dept_name    seniors  avg_senior_salary
@@ -101,9 +149,15 @@ ORDER  BY headcount DESC, dept;
 --   13        12             3               109462.0    109461
 --   (1 row)
 --
+-- [proof -- AVG skips NULL, it does not count it as 0]
+--   avg_x  sum_over_all_rows  avg_null_as_zero  count_x  count_star
+--   -----  -----------------  ----------------  -------  ----------
+--   15.0   10                 10.0              2        3
+--   (1 row)
+--
 -- [the rows an INNER JOIN drops because dept_id is NULL]
---   kind        rows
---   ----------  ----
+--   kind        row_count
+--   ----------  ---------
 --   inner join  12
 --   left join   13
 --   employees   13

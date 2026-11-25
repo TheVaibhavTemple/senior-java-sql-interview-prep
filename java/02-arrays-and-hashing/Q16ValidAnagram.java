@@ -4,6 +4,7 @@
  * TRACK        : Arrays & Hashing
  * DIFFICULTY   : EASY     (1 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- service aur product dono mein common; counting ka base pattern
  * TECHNIQUE    : Fixed-alphabet frequency counting with a single +1/-1 array
  *
  * PROBLEM
@@ -32,17 +33,44 @@
  *   thinking about the work, not just correctness. Always ask whether the alphabet is a-z
  *   before committing to int[26].
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Anagram matlab same letters, same count, bas order alag. Length alag to seedha false.
+ *   Ek int[26] lo: a ke char pe +1, b ke char pe -1. End mein sab zero to anagram.
+ *   Sirf a-z ho tabhi int[26]; warna HashMap of counts.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The simplest correct answer is to sort both strings and compare, which is O(n log n).
+ *   I can do better: if the lengths differ I return false straight away, otherwise I walk
+ *   both strings with one index, adding one for a's character and subtracting one for b's
+ *   in a single int[26]. If every slot ends at zero they are anagrams. That is O(n) time
+ *   and O(1) space, but only for lowercase a-z; for Unicode or mixed case I use a HashMap."
+ *
+ * TRAP
+ *   ! int[26] mein 'A' - 'a' negative index deta hai: ArrayIndexOutOfBoundsException.
+ *   ! Case/spaces ignore karne hain to pehle clean karo, phir length check; ulta kiya to
+ *     "Dormitory" / "Dirty Room" galat reject ho jayega.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Unicode input -- what breaks in the int[26] version?
+ *     -> c - 'a' range ke bahar jata hai aur exception aata hai. HashMap of counts lo; emoji
+ *        jaise surrogate pairs ke liye char nahi, codePoints() se gino.
  *   ? Ignore case and spaces -- where does that change go?
+ *     -> Sabse pehle: whitespace hatao, toLowerCase(Locale.ROOT), phir length check.
+ *        Code: isAnagramGeneral().
  *   ? Find all anagrams of p inside s (this becomes a sliding window).
+ *     -> p.length() size ki fixed window, dono ke int[26] counts; har slide pe ek char add,
+ *        ek remove, counts barabar hon to start index note karo. O(26 * n).
  *   ? Group anagrams instead of comparing two.
+ *     -> Har word ki key banao (sorted chars ya 26-count signature), Map<key, List> mein
+ *        daalo. Poora code: Q11GroupAnagrams (streams folder).
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Group anagrams
  *   - Ransom note
  *   - Permutation in string
  *   - Isomorphic strings
+ *
+ * VARIANTS     : LC 242, LC 383, LC 49, LC 438, LC 567, LC 205
  * ============================================================================================== */
 
 import java.util.*;
@@ -61,8 +89,10 @@ public class Q16ValidAnagram {
         return true;
     }
 
-    /* ---- Unicode / mixed case / spaces : a map instead of int[26] ---- */
+    /* ---- any alphabet, ignore case and spaces : clean FIRST, then a map of counts ---- */
     static boolean isAnagramGeneral(String a, String b) {
+        a = a.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);   // clean before length check
+        b = b.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
         if (a.length() != b.length()) return false;
         Map<Character, Integer> m = new HashMap<>();
         for (char c : a.toCharArray()) m.merge(c, 1, Integer::sum);
@@ -83,8 +113,8 @@ public class Q16ValidAnagram {
         System.out.println("listen / silent  : " + isAnagram("listen", "silent"));
         System.out.println("rat    / car     : " + isAnagram("rat", "car"));
         System.out.println("ab     / abb     : " + isAnagram("ab", "abb") + "   (length guard)");
-        System.out.println("general Dormitory/DirtyRoom : "
-                + isAnagramGeneral("dormitory", "dirtyroom"));
+        System.out.println("general Dormitory/Dirty Room : "
+                + isAnagramGeneral("Dormitory", "Dirty Room"));
         System.out.println("ransom aa / aab  : " + canConstruct("aa", "aab"));
         System.out.println("ransom aa / ab   : " + canConstruct("aa", "ab"));
     }
@@ -96,7 +126,7 @@ public class Q16ValidAnagram {
  * listen / silent  : true
  * rat    / car     : false
  * ab     / abb     : false   (length guard)
- * general Dormitory/DirtyRoom : true
+ * general Dormitory/Dirty Room : true
  * ransom aa / aab  : true
  * ransom aa / ab   : false
  * ============================================================================================== */

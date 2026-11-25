@@ -4,6 +4,7 @@
  * TRACK        : Sorting, Searching & Heaps
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P2   -- product aur fintech rounds mein common; meeting rooms twist bhi wahi aata
  * TECHNIQUE    : Sort by start then sweep; independent start/end sweep for the room count
  *
  * PROBLEM
@@ -36,12 +37,41 @@
  *   into two sorted timelines and sweeping them. Candidates who only memorised merge-
  *   intervals stall there.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Pehle start se sort karo. Ab har interval sirf pichhle merged interval se hi overlap kar
+ *   sakta hai, to ek pass kaafi hai: overlap hai to end badhao, warna naya interval shuru.
+ *   Meeting rooms mein starts aur ends alag sort karo: har start par room +1, har khatam
+ *   meeting par -1. Sabse bada count hi jawab hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Comparing every pair and merging repeatedly is O(n^2), so I sort by start time first.
+ *   After sorting, an interval can only overlap the last merged one, so one sweep that either
+ *   extends the current end with max or closes it gives the answer in O(n log n) time and
+ *   O(n) space. For meeting rooms I sort the starts and the ends separately and sweep: every
+ *   start takes a room, and every end that is not after it frees one. The edge case I confirm
+ *   first is whether touching intervals like [1,4] and [4,5] count as overlapping."
+ *
+ * TRAP
+ *   ! End update mein Math.max lagao: [1,10] ke baad [2,3] aaye to end 10 hi rehna chahiye,
+ *     3 nahi. Contained interval yahi pakadta hai.
+ *   ! Boundary pehle confirm karo: merge mein <= se touching intervals jud jaate hain, rooms
+ *     mein end <= start matlab room free ho gaya.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why sort by start and not by end for merging?
+ *     -> Start se sort par agar next interval current se overlap nahi karta, to aage wala koi
+ *        nahi karega. End se sort par [2,3],[4,5],[1,10] mein [1,10] pehle band hua [2,3] miss
+ *        kar deta hai.
  *   ? Why can you sort starts and ends independently for the room count -- doesn't that
  *     lose the pairing?
+ *     -> Kisi bhi time par rooms = ab tak shuru hui meetings - ab tak khatam hui. KAUN si
+ *        khatam hui farak nahi padta, sirf KITNI. Isliye pairing ki zaroorat nahi.
  *   ? Insert a new interval into an already-merged list without re-sorting.
+ *     -> Teen phase, O(n): jo new ke start se pehle khatam hote hain wo add karo, overlap walon
+ *        ko new mein merge karo (min start, max end), phir baaki sab add karo.
  *   ? Minimum platforms at a railway station -- restate it.
+ *     -> Train = meeting, arrival = start, departure = end, platform = room. Bas poochho ki
+ *        same time par aana aur jaana ho to alag platform chahiye ya nahi.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Insert interval
@@ -50,6 +80,8 @@
  *   - Interval list intersections
  *   - Non-overlapping intervals
  *   - Employee free time
+ *
+ * VARIANTS     : LC 56, LC 57, LC 252, LC 253, LC 435, LC 986
  * ============================================================================================== */
 
 import java.util.*;

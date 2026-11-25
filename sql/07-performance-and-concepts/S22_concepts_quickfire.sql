@@ -4,6 +4,7 @@
 -- TRACK        : Performance & Concepts
 -- DIFFICULTY   : EASY    (1 of 3)
 -- WEIGHTAGE    : HIGH    ***  asked in almost every round, usually in the first five minutes
+-- PRIORITY     : P1   -- pehle 5 minute ke warm-up sawaal, har company mein
 -- TECHNIQUE    : Definitions you must be able to give in one sentence, each with a live example
 --
 -- PROBLEM
@@ -12,8 +13,9 @@
 --
 -- ALGORITHM  (the one-sentence answers)
 --   1. DELETE is DML: row by row, fires triggers, supports WHERE, logged, rollback-able.
---      TRUNCATE is DDL: deallocates pages, no WHERE, no row triggers, resets identity, far
---      faster, and on many engines it cannot be rolled back. DROP removes the table itself.
+--      TRUNCATE is DDL: deallocates pages, no WHERE, no row triggers, far faster, and on many
+--      engines it cannot be rolled back. Identity reset is engine-specific (MySQL and SQL Server
+--      reset it; PostgreSQL only with RESTART IDENTITY). DROP removes the table itself.
 --   2. UNION deduplicates (an implicit sort or hash); UNION ALL concatenates. Default to ALL
 --      and only pay for UNION when you genuinely need distinct rows.
 --   3. The anomalies: DIRTY READ (reading uncommitted data), NON-REPEATABLE READ (the same row
@@ -41,17 +43,56 @@
 --   than logging row deletions") buys you the rest of the hour at a senior level. Waffling here
 --   costs more than getting a hard query slightly wrong later.
 --
--- FOLLOW-UPS
+-- SAMJHO
+--   Har definition ek line + ek consequence. DELETE = DML, WHERE chalta hai, rollback hota hai.
+--   TRUNCATE = DDL, saari rows, bahut fast; rollback hoga ya nahi, engine pe depend karta hai.
+--   UNION duplicate hatane ke liye sort/hash karta hai, UNION ALL bas jod deta hai.
+--   Isolation level jitna upar, utni anomalies band, par utna zyada locking ya retry.
+--
+-- AISE BOLO  (30-40 sec)
+--   "I'd first say which engine I mean, because TRUNCATE and isolation differ between Oracle and
+--   PostgreSQL. DELETE is DML: it takes a WHERE, fires triggers, is logged row by row and can be
+--   rolled back. TRUNCATE is DDL that drops the data in one go, so it is much faster but has no
+--   WHERE; in Oracle it commits implicitly, while in PostgreSQL it can be rolled back inside a
+--   transaction. I default to UNION ALL, because UNION adds a sort or hash over the whole result
+--   just to remove duplicates, and both Oracle and PostgreSQL default to READ COMMITTED."
+--
+-- TRAP
+--   ! "TRUNCATE rollback nahi hota" har engine pe sach nahi: Oracle aur MySQL mein implicit
+--     commit, par Postgres mein transaction ke andar rollback ho jata hai. Engine bol ke jawab do.
+--   ! COUNT(col) NULL skip karta hai: is seed mein COUNT(*) = 13 par COUNT(dept_id) = 12.
+--
+-- FOLLOW-UPS KE JAWAB
 --   ? Can TRUNCATE be rolled back? (depends on the engine -- say so, do not guess)
+--     -> Oracle: nahi, DDL hai, pehle aur baad mein implicit commit. Postgres: haan, BEGIN ke
+--        andar. MySQL: nahi. SQL Server: explicit transaction ke andar haan.
 --   ? Which isolation level does your production database actually use?
+--     -> Oracle aur Postgres dono ka default READ COMMITTED; Spring ka Isolation.DEFAULT wahi
+--        leta hai. [confirm: kisi service ne level change kiya tha ya nahi]
 --   ? UNION ALL is faster -- by how much, and why?
+--     -> Fixed number nahi. UNION poore result pe sort ya hash karta hai; bade result pe memory
+--        aur temp disk lagti hai. UNION ALL rows seedha aage bhej deta hai.
 --   ? Give a case where you deliberately denormalised, and what it cost you.
+--     -> Design answer: reporting ke liye summary table ya materialized view; read fast, par sync
+--        logic aur stale data ka risk. [apna real case ho to woh, warna design answer hi do]
 --
 -- ALSO UNLOCKS
 --   - DDL vs DML vs DCL vs TCL
 --   - ACID properties
 --   - Transaction anomalies and locking
 --   - Index types: B-tree, clustered vs non-clustered, composite, partial, covering
+--
+-- ORACLE / POSTGRES MEIN
+--   Transaction : Oracle mein BEGIN nahi likhte; pehla DML transaction shuru karta hai, phir
+--                 COMMIT / ROLLBACK. Postgres mein BEGIN; ... ROLLBACK; yahan jaisa hi.
+--   Isolation   : Oracle sirf READ COMMITTED (default) aur SERIALIZABLE deta hai; dirty read
+--                 kabhi nahi. Postgres READ UNCOMMITTED ko READ COMMITTED jaisa chalata hai, aur
+--                 uska REPEATABLE READ (snapshot) phantom bhi rokta hai.
+--   TRUNCATE    : Postgres sequence reset nahi karta jab tak TRUNCATE ... RESTART IDENTITY na
+--                 likho. Oracle TRUNCATE ke baad ROLLBACK se data wapas nahi aata.
+--   Constant    : Oracle mein SELECT 'x' ke saath FROM dual chahiye (23ai se pehle).
+--
+-- VARIANTS     : not LeetCode; classic: DELETE vs TRUNCATE vs DROP, UNION vs UNION ALL, ACID
 -- ================================================================================================
 
 -- >>> QUERY: UNION removes duplicates, UNION ALL does not
@@ -86,7 +127,7 @@ SELECT COUNT(*) AS after_rollback FROM orders;
 SELECT COUNT(*) AS count_star, COUNT(dept_id) AS count_col,
        COUNT(DISTINCT dept_id) AS count_distinct FROM employees;
 
--- >>> QUERY: the isolation levels this engine reports (dialect-specific; shown for contrast)
+-- >>> QUERY: the ANSI isolation levels and what each allows (a typed table, not engine output)
 SELECT 'READ UNCOMMITTED' AS level, 'dirty, non-repeatable, phantom' AS allows
 UNION ALL SELECT 'READ COMMITTED',  'non-repeatable, phantom'
 UNION ALL SELECT 'REPEATABLE READ', 'phantom'
@@ -94,7 +135,7 @@ UNION ALL SELECT 'SERIALIZABLE',    'none';
 
 -- ================= RESULTS ========================================================================
 -- Generated by run_all.py against 00-schema/01_schema.sql + 02_seed.sql
--- Engine: SQLite 3.53.1.  Fresh database per file, so each file reproduces standalone.
+-- Engine: SQLite 3.50.4.  Fresh database per file, so each file reproduces standalone.
 -- ----------------------------------------------------------------------------------------
 -- [UNION removes duplicates, UNION ALL does not]
 --   variant           rows
@@ -144,7 +185,7 @@ UNION ALL SELECT 'SERIALIZABLE',    'none';
 --   13          12         3
 --   (1 row)
 --
--- [the isolation levels this engine reports (dialect-specific; shown for contrast)]
+-- [the ANSI isolation levels and what each allows (a typed table, not engine output)]
 --   level             allows
 --   ----------------  ------------------------------
 --   READ UNCOMMITTED  dirty, non-repeatable, phantom

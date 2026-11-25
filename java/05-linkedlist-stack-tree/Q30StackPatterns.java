@@ -4,6 +4,7 @@
  * TRACK        : Linked List, Stack & Tree
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- balanced brackets bahut common; min stack, monotonic stack product mein
  * TECHNIQUE    : Stack of expected closers; value+min pairs; monotonic stack
  *
  * PROBLEM
@@ -27,7 +28,7 @@
  *   Stack of EXPECTED closers                      O(n)          O(n)      WRITE THIS
  *       > Removes the matching table entirely.
  *   Value + running-min pairs                      O(n)          O(n)      WRITE THIS
- *       > The only way to keep getMin O(1) through pops.
+ *       > The simplest way to keep getMin O(1) through pops.
  *   Monotonic stack                                O(n)          O(n)      WRITE THIS
  *       > Each index is pushed and popped once -- amortised O(n).
  *
@@ -38,11 +39,37 @@
  *   resolves all of them at once. That sentence unlocks histogram, daily temperatures and
  *   trapping rain water.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Brackets: opener dikhe to uska EXPECTED closer push karo; closer aaye to pop karke match
+ *   karo. Min stack: har value ke saath "ab tak ka min" bhi rakho. Monotonic stack mein wo
+ *   indices rakho jinka jawab abhi pata nahi; bada number aaya to sabka jawab ek saath mila.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A counter per bracket type fails on input like ([)], because order matters, so I use a
+ *   stack. When I see an opener I push the closer I expect, and on a closer I pop and compare,
+ *   which is O(n) time and O(n) space. I use ArrayDeque, not java.util.Stack, because Stack
+ *   extends Vector and synchronises every call. The edge cases are an empty string, which is
+ *   valid, and leftover openers like (((, so I check that the stack is empty at the end."
+ *
+ * TRAP
+ *   ! End mein stack.isEmpty() check bhoole to "(((" true aayega. Aur pop se pehle empty
+ *     check, warna ")" par ArrayDeque NoSuchElementException deta hai.
+ *   ! Monotonic stack mein value nahi, INDEX push karo; width aur "kitne din baad" index se
+ *     hi nikalta hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why ArrayDeque over java.util.Stack?
+ *     -> Stack Vector extend karta hai, har method synchronized, single thread mein bhi lock ka
+ *        kharcha. Stack ka Javadoc khud Deque suggest karta hai. ArrayDeque null nahi leta.
  *   ? getMin in O(1) with O(1) EXTRA space -- is it possible?
+ *     -> Haan, encoding: v < min ho to 2*v - min push karo aur min = v. Pop par top < min mile
+ *        to purana min = 2*min - top. long use karo, warna overflow.
  *   ? Daily temperatures -- same monotonic stack, restate it.
+ *     -> Wahi nextGreater loop, bas pop par value ki jagah i - index store karo: kitne din baad
+ *        garam din aaya. Jinka koi nahi, unka 0.
  *   ? Largest rectangle in a histogram -- what does the sentinel at the end do?
+ *     -> i == n par height 0 maante hain, jo har bar se chhoti hai. Isse bache hue saare bars
+ *        pop hokar apna area de dete hain; alag cleanup loop nahi chahiye.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Min stack
@@ -52,6 +79,8 @@
  *   - Trapping rain water
  *   - Evaluate RPN
  *   - Remove K digits
+ *
+ * VARIANTS     : LC 20, LC 155, LC 496, LC 503, LC 739, LC 84, LC 42, LC 150, LC 402
  * ============================================================================================== */
 
 import java.util.*;

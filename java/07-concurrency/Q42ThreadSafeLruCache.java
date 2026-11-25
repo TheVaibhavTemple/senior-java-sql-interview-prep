@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- product companies LRU ka thread-safe version poochti hain
  * TECHNIQUE    : Single-lock guard over an access-ordered LinkedHashMap; approximate LRU for scale
  *
  * PROBLEM
@@ -29,7 +30,7 @@
  *   A single ReentrantLock around both operations  --            --        WRITE THIS
  *       > Correct, and honest about the serialisation cost.
  *   ConcurrentHashMap + approximate LRU            --            --        WRITE THIS
- *       > Scales; eviction order becomes best-effort. Name the trade-off.
+ *       > Scales; eviction becomes best-effort (Option B below is FIFO, not LRU). Name it.
  *   Caffeine / Guava cache                         --            --        WRITE THIS
  *       > The production answer. Say it even if you hand-write one.
  *
@@ -41,12 +42,40 @@
  *   bottleneck so real caches use approximate eviction, is what a senior answer looks
  *   like.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   accessOrder=true wala LinkedHashMap get() par bhi list badalta hai, matlab har read ek
+ *   write hai. Isliye ReadWriteLock ka read lock yahan galat hai; get aur put dono par ek hi
+ *   exclusive lock. Scale chahiye to strict LRU chhodo aur Caffeine jaisi library lo.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The reflex is a ReadWriteLock because caches are read-heavy, but with an access-ordered
+ *   LinkedHashMap every get reorders the list, so concurrent readers would corrupt it. I put
+ *   one exclusive lock around get and put, override removeEldestEntry for eviction, and both
+ *   operations stay O(1) with O(capacity) space. The trade-off is that every call is
+ *   serialised, so at scale I would use Caffeine, which buffers reads instead of locking on
+ *   every get and evicts with Window TinyLFU."
+ *
+ * TRAP
+ *   ! "Cache read-heavy hai to ReadWriteLock" bola to wahi galti jo ye sawaal pakadta hai.
+ *   ! Option B ka eviction FIFO hai (insert order), LRU nahi: get par order update nahi hota.
+ *     Isko "best-effort" bolo, LRU mat bolo.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why does a ReadWriteLock not work here?
+ *     -> accessOrder=true mein get() entry ko list ke end mein le jata hai, ye structural
+ *        change hai. Read lock kai threads ko ek saath ye karne deta hai, list corrupt.
  *   ? How would you shard the cache to reduce contention?
+ *     -> N segments, har ek ka apna lock aur LinkedHashMap; key.hashCode() se segment chuno.
+ *        Contention kam, par LRU sirf segment ke andar sahi, globally approximate.
  *   ? What does Caffeine do differently (Window-TinyLFU)?
+ *     -> Naya entry admit karne se pehle frequency sketch se dekhta hai ki wo victim se zyada
+ *        use hota hai ya nahi. Reads buffer mein record hote hain, har get par lock nahi.
  *   ? Add a TTL -- does eviction stay O(1)?
+ *     -> Sabka TTL same ho to insert order hi expiry order hai, O(1). Har entry ka alag TTL
+ *        ho to heap O(log n) ya timer wheel; get par lazy expiry check O(1) hai.
  *   ? Two threads miss the same key at once -- how do you avoid loading it twice?
+ *     -> computeIfAbsent (Option B) per key ek hi baar load karta hai. Load lamba ho to map
+ *        mein CompletableFuture rakho, taaki bin lock pakad ke DB call na chale.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Cache stampede prevention
@@ -54,6 +83,14 @@
  *   - computeIfAbsent atomicity
  *   - Approximate vs strict LRU
  *   - Distributed cache design
+ *
+ * APNI STORY SE JODO
+ *   "When a cache must be shared across instances I move it out of the JVM; at work I have
+ *   used Redis for [bhar do: kis cheez ke liye]."
+ *   Note: Trade-off bolo: in-JVM cache fast hai par har pod ka alag; Redis shared hai par har
+ *   read ek network hop.
+ *
+ * VARIANTS     : LC 146 (LRU Cache), LC 460 (LFU Cache)
  * ============================================================================================== */
 
 import java.util.*;

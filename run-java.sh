@@ -15,8 +15,10 @@ for f in java/*/*.java; do
     echo "COMPILE FAIL  $f"; sed 's/^/    /' "$work/err" | head -5; fail=$((fail+1)); failed+=("$cls"); continue
   fi
 
-  actual=$(cd "$out" && timeout 120 java "$cls" 2>/dev/null)
-  expected=$(sed -n '/^ \* EXPECTED OUTPUT/,/^ \* =*\s*\*\/$/p' "$f" \
+  # tr -d '\r': on Windows, git (core.autocrlf=true) checks files out with CRLF and
+  # println writes CRLF, so strip carriage returns on both sides before comparing.
+  actual=$(cd "$out" && timeout 120 java "$cls" 2>/dev/null | tr -d '\r')
+  expected=$(tr -d '\r' < "$f" | sed -n '/^ \* EXPECTED OUTPUT/,/^ \* =*\s*\*\/$/p' \
              | sed '1d;2d;$d' | sed 's/^ \* \{0,1\}//')
 
   # Four files are deliberately non-deterministic: they demonstrate data races,

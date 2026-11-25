@@ -13,3 +13,6 @@ sql/*.db-journal
 .vscode/
 *.iml
 .DS_Store
+
+# python cache from running sql/run_all.py
+__pycache__/

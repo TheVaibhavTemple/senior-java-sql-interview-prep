@@ -4,6 +4,7 @@
  * TRACK        : Two Pointers & Sliding Window
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- "0s, 1s, 2s sort karo" aur move zeroes service rounds mein bhi aate
  * TECHNIQUE    : Three-way partition with low / mid / high pointers
  *
  * PROBLEM
@@ -34,11 +35,37 @@
  *   after swapping with high -- you have not looked at the value that just arrived from
  *   the right, so mid must stay put.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Teen pointer: low ke pehle sab 0, low se mid tak 1, high ke baad sab 2.
+ *   a[mid] 0 hai to low se swap, dono aage. 1 hai to sirf mid aage.
+ *   2 hai to high se swap aur high peeche, par mid wahin; jo aaya wo abhi dekha nahi.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Arrays.sort works but is O(n log n) and ignores that there are only three values.
+ *   Counting the 0s, 1s and 2s and overwriting is O(n) but takes two passes. I do it in one
+ *   pass with three pointers, low, mid and high, keeping the invariant that everything
+ *   before low is 0, between low and mid is 1, and after high is 2: O(n) time and O(1)
+ *   space. The edge case is a 2: after swapping it with high I do not advance mid, because
+ *   the value that came in from the right has not been checked yet."
+ *
+ * TRAP
+ *   ! 2 ko high se swap karke mid++ kiya to bug. Sample [2,0,2,1,1,0] pe yeh bug chhup jata
+ *     hai; [1,2,0] pe dry run karo. main() dono dikhata hai.
+ *   ! Loop mid <= high chahiye; mid < high se aakhri element dekha hi nahi jata ([1,0]).
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why does mid advance on a 0 but not on a 2?
+ *     -> low se jo aata hai wo pehle se dekha hua 1 hai (ya mid == low), isliye safe. high
+ *        se jo aata hai wo unexplored hai, use abhi check karna hai.
  *   ? Four colours instead of three -- does this generalise?
+ *     -> Seedha nahi. Counting sort O(n + k) sabse simple; ya pehle {0,1} vs {2,3} partition,
+ *        phir har half pe two-way partition. Dono O(n).
  *   ? Is this stable? Does it matter here?
+ *     -> Stable nahi, swaps se equal values ka order badalta hai. Plain ints mein fark nahi;
+ *        records ko kisi key se partition karo to farak padta hai.
  *   ? Write quicksort's partition step with the same idea.
+ *     -> Pivot ke against 3-way partition: < pivot low ki taraf, == beech mein, > high ki
+ *        taraf; wahi low/mid/high loop. Bahut duplicates pe quicksort O(n^2) se bachta hai.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Sort colors
@@ -46,6 +73,12 @@
  *   - Segregate even and odd
  *   - Quicksort partition
  *   - Partition around a pivot
+ *
+ * JAVA 21 MEIN
+ *   Arrow switch (Java 14 se standard): case 0 -> swap(a, low++, mid++); case 1 -> mid++;
+ *   default -> swap(a, mid, high--); Fall-through nahi hota, break bhoolne ka bug khatam.
+ *
+ * VARIANTS     : LC 75, LC 283, LC 905
  * ============================================================================================== */
 
 import java.util.*;
@@ -106,10 +139,18 @@ public class Q24DutchNationalFlag {
         sortColors(a);
         System.out.println("sortColors        : " + Arrays.toString(a));
 
+        // the sample input hides the bug: it happens to come out sorted
         int[] bug = {2, 0, 2, 1, 1, 0};
         buggySortColors(bug);
-        System.out.println("buggy version     : " + Arrays.toString(bug)
-                + (Arrays.equals(bug, a) ? "" : "   <-- NOT SORTED (mid advanced too early)"));
+        System.out.println("buggy on sample   : " + Arrays.toString(bug)
+                + (Arrays.equals(bug, a) ? "   (sorted by luck)" : "   <-- NOT SORTED"));
+
+        // a 0 arrives from the right and mid skips past it
+        int[] bug2 = {1, 2, 0};
+        buggySortColors(bug2);
+        System.out.println("buggy on [1,2,0]  : " + Arrays.toString(bug2)
+                + (Arrays.equals(bug2, new int[]{0, 1, 2})
+                        ? "" : "   <-- NOT SORTED (mid advanced too early)"));
 
         int[] z = {0, 1, 0, 3, 12};
         moveZeroes(z);
@@ -125,7 +166,8 @@ public class Q24DutchNationalFlag {
  * EXPECTED OUTPUT   (captured by actually running this file on OpenJDK 21)
  * ----------------------------------------------------------------------------------------------
  * sortColors        : [0, 0, 1, 1, 2, 2]
- * buggy version     : [0, 0, 1, 1, 2, 2]
+ * buggy on sample   : [0, 0, 1, 1, 2, 2]   (sorted by luck)
+ * buggy on [1,2,0]  : [1, 0, 2]   <-- NOT SORTED (mid advanced too early)
  * moveZeroes        : [1, 3, 12, 0, 0]
  * segregateEvenOdd  : [12, 34, 90, 8, 9, 45, 3]
  * ============================================================================================== */

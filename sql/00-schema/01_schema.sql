@@ -16,6 +16,8 @@ DROP TABLE IF EXISTS logins;
 DROP TABLE IF EXISTS salary_history;
 DROP TABLE IF EXISTS employees;
 DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS bank_statement;
+DROP TABLE IF EXISTS ledger;
 
 CREATE TABLE departments (
     dept_id     INTEGER PRIMARY KEY,
@@ -85,3 +87,24 @@ CREATE INDEX idx_emp_manager   ON employees(manager_id);
 CREATE INDEX idx_orders_cust   ON orders(cust_id, order_date);
 CREATE INDEX idx_payments_cust ON payments(cust_id, paid_at);
 CREATE INDEX idx_logins_user   ON logins(user_id, login_at);
+
+-- S24 reconciliation: what the bank says happened vs what our system posted.
+-- Money is INTEGER here (Oracle NUMBER(18,2), PostgreSQL NUMERIC(18,2)); never FLOAT.
+CREATE TABLE bank_statement (
+    stmt_id     INTEGER PRIMARY KEY,
+    txn_ref     TEXT    NOT NULL,
+    value_date  TEXT    NOT NULL,                        -- ISO yyyy-mm-dd
+    amount      INTEGER NOT NULL
+);
+
+CREATE TABLE ledger (
+    entry_id    INTEGER PRIMARY KEY,
+    txn_ref     TEXT    NOT NULL,
+    posted_date TEXT    NOT NULL,                        -- ISO yyyy-mm-dd
+    amount      INTEGER NOT NULL
+);
+
+-- Not UNIQUE: the seed has a duplicate posting on purpose. Named ix_ rather than idx_ so the
+-- index listing in S20 (name LIKE 'idx_%') still shows only the core schema.
+CREATE INDEX ix_bank_txn_ref   ON bank_statement(txn_ref);
+CREATE INDEX ix_ledger_txn_ref ON ledger(txn_ref);

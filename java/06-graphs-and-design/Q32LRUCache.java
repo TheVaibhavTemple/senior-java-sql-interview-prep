@@ -4,6 +4,7 @@
  * TRACK        : Graphs & Design Data Structures
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- senior Java rounds ka favourite design DS; thread safety tak poochte hain
  * TECHNIQUE    : Hash map for lookup + doubly linked list for recency, with head/tail sentinels
  *
  * PROBLEM
@@ -35,12 +36,41 @@
  *   unlink and insert, which is exactly where the bugs live. Mention the LinkedHashMap
  *   one-liner, then write the full version -- they will ask for it regardless.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Do structure, do kaam. HashMap batata hai key kahan hai, O(1) mein. Doubly linked list
+ *   batati hai kaun sabse purana hai: head ke paas latest, tail ke paas oldest. get aur put
+ *   dono par node front par jaata hai; capacity full ho to tail.prev hatao, map se bhi.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "A HashMap with an ArrayList for order makes every access O(n), because removing from the
+ *   middle of a list shifts elements. I combine a HashMap from key to node with a doubly
+ *   linked list in recency order, with head and tail sentinels, so get and put are both O(1)
+ *   and space is O(capacity). On every get or update I unlink the node and insert it after
+ *   head, and at capacity I evict tail.prev from both the list and the map. I also mention
+ *   that LinkedHashMap with accessOrder = true and removeEldestEntry does this in a few lines,
+ *   and that this version is not thread-safe as written."
+ *
+ * TRAP
+ *   ! Evict karte waqt node list aur map DONO se hatao; sirf list se hataya to map mein
+ *     memory leak aur stale get.
+ *   ! get bhi ek "use" hai: get par node front par nahi gaya to ye LRU nahi, FIFO ban jaata hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why a doubly and not a singly linked list?
+ *     -> Beech ke node ko O(1) mein unlink karne ke liye uska prev chahiye. Singly list mein
+ *        prev dhoondhne mein O(n) lagta hai.
  *   ? What do the head and tail sentinels buy you?
+ *     -> Har real node ka prev aur next hamesha non-null rehta hai, to empty list, first ya
+ *        last node ke liye alag if nahi likhna padta. Bugs wahin hote hain.
  *   ? Make it thread-safe -- and why doesn't a ReadWriteLock help?
+ *     -> get bhi list badalta hai (node front par jaata hai), to har get ko write lock chahiye;
+ *        read lock se koi fayda nahi. Ek lock ya synchronized lo; scale par Caffeine jaisi library.
  *   ? Implement LFU instead. What extra structure do you need?
+ *     -> key -> node map ke saath frequency -> keys (LinkedHashSet) ka map, aur minFreq variable.
+ *        Same frequency par tie ho to sabse purana evict. Sab O(1).
  *   ? Add a per-key TTL.
+ *     -> Node mein expiresAt rakho; get par expired mile to hatao aur miss return karo (lazy).
+ *        Saath mein background cleanup; Redis bhi lazy aur periodic dono expiry karta hai.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - LFU cache
@@ -48,6 +78,21 @@
  *   - Insert / delete / getRandom in O(1)
  *   - Browser history
  *   - All O(1) data structure
+ *
+ * JAVA 21 MEIN
+ *   LinkedHashMap ab SequencedMap hai (JEP 431): pollFirstEntry() se eldest entry seedha milti
+ *   hai aur putLast() key ko most-recent end par le jaata hai. Interview mein phir bhi DLL
+ *   wala version likho. Virtual threads ke saath: Java 21 mein synchronized ke andar blocking
+ *   call carrier thread ko pin karta hai, to lock ke andar I/O mat karo.
+ *
+ * APNI STORY SE JODO
+ *   "At work I have used Redis as a cache [what it cached]. Redis can evict with an LRU policy
+ *   such as allkeys-lru once maxmemory is reached, and its LRU is approximate because it
+ *   samples keys; this question is the exact, in-process version of that."
+ *   Note: thread-safe follow-up par batch wala example do: synchronized shared HashMap ko
+ *   ConcurrentHashMap se badla, lock contention hati, window 45 min se 8 min.
+ *
+ * VARIANTS     : LC 146, LC 460, LC 380, LC 432, LC 1472
  * ============================================================================================== */
 
 import java.util.*;

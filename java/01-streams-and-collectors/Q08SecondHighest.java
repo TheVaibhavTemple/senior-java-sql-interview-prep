@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- har round mein aata hai; stream aur one-pass, dono yaad rakho
  * TECHNIQUE    : distinct + sort + skip (readable), then a single-pass two-variable scan (optimal)
  *
  * PROBLEM
@@ -37,11 +38,38 @@
  *   pass", and write it. The trap in the one-pass version is duplicates: the v < max guard
  *   is what makes [99, 99, 45] return 45 and not 99.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Pehle duplicates hatao, warna [99, 99, 45] mein 99 hi "second" ban jata hai. Stream mein
+ *   distinct, reverse sort, skip(1), findFirst. One pass mein do variable rakho, max aur second:
+ *   naya bada aaye to purana max second mein jata hai; max se chhota par second se bada aaye
+ *   to woh naya second.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Sorting descending and taking index 1 is the first idea, but it breaks when the maximum
+ *   repeats, so I add distinct() first: distinct, sort in reverse, skip one, findFirst. That
+ *   is O(n log n) time and O(n) space. Without sorting, I keep max and second in one pass,
+ *   which is O(n) time and O(1) space, and the v < max check skips duplicates of the max. For
+ *   [5, 5] or a single element there is no second value, so I return empty, not a fake number."
+ *
+ * TRAP
+ *   ! distinct() bhoole to [99, 99, 45] pe 99 aata hai. Employee list mein bhi yahi: top salary
+ *     pe tie ho to skip(1) doosra topper deta hai, second highest salary nahi.
+ *   ! Seed Integer.MIN_VALUE rakha to input mein MIN_VALUE ho tab galat null aata hai; isliye
+ *     yahan long seed (Long.MIN_VALUE) hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? What does your code return for [5, 5]? For one element? For an empty list?
+ *     -> One-pass version teeno mein null deta hai (main ki edge lines), stream version
+ *        Optional.empty(). Real code mein Optional ya OptionalInt return karo, null nahi.
  *   ? Generalise to Nth highest.
+ *     -> nthHighest(): distinct, reverse sort, skip(n - 1); n < 1 validate karo, warna skip(-1)
+ *        exception deta hai. Bade input pe size-N TreeSet (size > N ho to pollFirst), O(n log N).
  *   ? What is the SQL window-function version?
+ *     -> DENSE_RANK() OVER (ORDER BY salary DESC) nikalo, phir WHERE rnk = 2. DENSE_RANK isliye
+ *        ki tie ek hi rank le; ROW_NUMBER tie ko alag rank deta hai (SQL file S05 dekho).
  *   ? Second highest per department.
+ *     -> Q09 wala shape: groupingBy(dept, collectingAndThen(...)), finisher mein salary map,
+ *        distinct, reverse sort, skip(1). SQL mein PARTITION BY dept jod do.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Nth largest element
@@ -49,6 +77,8 @@
  *   - Kth largest (heap version)
  *   - Top 2 per group
  *   - Second most frequent element
+ *
+ * VARIANTS     : LC 414 (third max), LC 215 (Kth largest), LC 176 / LC 177 (SQL 2nd / Nth salary)
  * ============================================================================================== */
 
 import java.util.*;

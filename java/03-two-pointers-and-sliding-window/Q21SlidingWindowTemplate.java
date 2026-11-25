@@ -4,6 +4,7 @@
  * TRACK        : Two Pointers & Sliding Window
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- "longest substring without repeating" sabse zyada poocha jata hai
  * TECHNIQUE    : Sliding window: expand right, shrink while invalid, record
  *
  * PROBLEM
@@ -35,12 +36,40 @@
  *   question becomes a different definition of "invalid". size > k, missing > 0, sum >
  *   target: same code, different condition.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Teen step yaad rakho: right se andar lo, jab tak window invalid hai left se nikalo,
+ *   phir answer update karo. Har problem mein sirf "invalid" ki definition badalti hai.
+ *   Minimum window mein ulta hai: jab tak window VALID hai, record karo aur shrink karo.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The brute force tries every start and extends while the substring stays valid, which
+ *   is O(n^2). I use a sliding window instead: expand the right end, shrink from the left
+ *   while the window breaks the rule, then record the answer. Each character enters and
+ *   leaves the window at most once, so it is O(n) time and O(k) space for the counts. For
+ *   unique characters I store the last index of each character so the left pointer jumps
+ *   instead of crawling. The catch is that this only works when shrinking always moves
+ *   the window back towards valid."
+ *
+ * TRAP
+ *   ! Jump wale version mein lastSeen[c] >= left check zaroori hai; warna left peeche chala
+ *     jata hai ("abba" pe 2 ki jagah 3). int[128] sirf ASCII input ke liye hai.
+ *   ! Maximum wale problem mein record shrink ke BAAD; minimum window mein shrink loop ke
+ *     ANDAR. Jagah badli to answer galat.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Write the generic template on the board, then adapt it to at-most-K-distinct in 30
  *     seconds.
+ *     -> Map of counts; invalid = map.size() > k. Shrink mein count 0 ho jaye to key remove.
+ *        Code: longestWithAtMostKDistinct().
  *   ? Exactly K distinct instead of at most K -- what is the trick?
+ *     -> Ginti ke liye: exactly(k) = atMost(k) - atMost(k - 1). Longest ke liye at-most-k
+ *        window hi chalao, aur record sirf tab karo jab map.size() == k.
  *   ? Why can't you use a sliding window for "subarray sums to K" with negative numbers?
+ *     -> Negative se sum monotonic nahi rehta; shrink karne se sum badh bhi sakta hai. Wahan
+ *        prefix sum + HashMap lagta hai (Q23SubarraySumEqualsK).
  *   ? Minimum window substring -- what is the shrink condition?
+ *     -> Jab tak missing == 0 (t ke saare chars window mein), record karo aur left badhao.
+ *        Kisi needed char ka need 0 se 1 hua to missing++, aur loop ruk jata hai.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - At most K distinct characters
@@ -49,6 +78,14 @@
  *   - Fruit into baskets
  *   - Permutation in string
  *   - Max consecutive ones III
+ *
+ * APNI STORY SE JODO
+ *   "I have used a rate limiter at work; a sliding-window limiter is this same idea over
+ *   request timestamps. [fill: which algorithm ours used, token bucket or sliding window]"
+ *   Note: window = last N seconds ke requests; purane evict karo, phir size ko limit se
+ *   compare karo. Code: Q43RateLimiter.
+ *
+ * VARIANTS     : LC 3, LC 159, LC 340, LC 76, LC 424, LC 904, LC 567, LC 1004, LC 992
  * ============================================================================================== */
 
 import java.util.*;

@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- "har department ka highest paid" Java 8 ka favourite sawal hai
  * TECHNIQUE    : groupingBy + maxBy wrapped in collectingAndThen to unwrap the Optional
  *
  * PROBLEM
@@ -24,7 +25,7 @@
  *       > Correct but does more work than needed.
  *   groupingBy + maxBy                             O(n)          O(n)      acceptable
  *       > Leaves you with Optional<Employee> as the map value -- awkward to consume.
- *   groupingBy + collectingAndThen(maxBy, Optional O(n)          O(n)      WRITE THIS
+ *   collectingAndThen(maxBy, Optional::get)        O(n)          O(n)      WRITE THIS
  *       > Unwraps the Optional so the value is the employee itself.
  *   toMap with BinaryOperator.maxBy                O(n)          O(n)      acceptable
  *       > Also fine; slightly less readable.
@@ -35,18 +36,49 @@
  *   say that sentence out loud. collectingAndThen is the idiom for "collect, then
  *   transform", and it returns in almost every follow-up.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Department se group karo, aur har group ko maxBy(salary) se ek employee tak le aao.
+ *   maxBy Optional deta hai, to collectingAndThen(..., Optional::get) se usko kholo. get()
+ *   yahan safe hai, kyunki groupingBy kabhi khaali group nahi banata.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Grouping into lists and sorting each one works, but that is O(n log n) for a simple max.
+ *   I group by department with maxBy on salary as the downstream, and wrap it in
+ *   collectingAndThen with Optional::get, which is safe because groupingBy never creates an
+ *   empty group. That is O(n) time and O(d) extra space for d departments. On a tie, maxBy
+ *   keeps the first employee it saw, so if that matters I add a thenComparing tie-break."
+ *
+ * TRAP
+ *   ! Optional::get bina wajah bataye mat likho; bolo "group kabhi khaali nahi hota".
+ *   ! Collectors.filtering(..., maxBy(...)) ya second-highest mein group khaali ho sakta hai,
+ *     wahan get() NoSuchElementException deta hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why is Optional::get safe here but not in general?
+ *     -> groupingBy group tabhi banata hai jab usme kam se kam ek element ho. Khaali stream ka
+ *        max() ya filtering downstream empty Optional deta hai, wahan get() throw karta hai.
  *   ? Two employees tie on the highest salary -- which one do you get, and can you control
  *     it?
+ *     -> maxBy tie pe pehla encounter wala rakhta hai. Control ke liye thenComparing lagao;
+ *        dhyan do, maxBy mein thenComparing(getName) alphabet mein baad wala naam jitata hai.
  *   ? Lowest and highest in one pass (Collectors.teeing).
+ *     -> teeing(minBy(..), maxBy(..), merger) ek hi pass mein dono nikalta hai (Java 12+).
+ *        Code mein salaryRangePerDept() dekho.
  *   ? Second highest per department -- what changes?
+ *     -> collectingAndThen(toList(), ...) mein salary desc sort, skip(1), findFirst(). Ek hi
+ *        employee wale group ka jawab empty hai, to Optional rakho; get() ab safe nahi.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Best-selling product per category
  *   - Latest order per customer
  *   - Min / max per group
  *   - Longest tenure per team
+ *
+ * JAVA 21 MEIN
+ *   Optional::get ki jagah Optional::orElseThrow (Java 10 se) likho: behaviour same hai, par
+ *   naam se dikhta hai ki khaali hone pe exception aayega.
+ *
+ * VARIANTS     : LC 184, LC 185, LC 176 (SQL twins); classic -- latest order per customer
  * ============================================================================================== */
 
 import java.util.*;

@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- common hai, aur ConcurrentHashMap.merge se concurrency round khulta hai
  * TECHNIQUE    : toMap with a merge function; Map.merge for the in-place form
  *
  * PROBLEM
@@ -36,17 +37,50 @@
  *   API and carries straight over to ConcurrentHashMap.merge, which is atomic -- mention
  *   that link, it is the bridge to the concurrency round.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Dono maps ki entries ek stream mein jodo (Stream.concat) aur toMap ke teesre argument
+ *   Integer::sum se same key ki values add karo. Ya pehla map copy karo aur doosre pe forEach
+ *   se merge(k, v, Integer::sum). putAll mat likho, woh value overwrite karta hai, jodta nahi.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "putAll is the tempting answer, but it overwrites the value for a repeated key instead of
+ *   adding it. I concat both entry streams and collect with toMap, using Integer::sum as the
+ *   merge function, which is O(n) time and O(n) space; without that third argument a duplicate
+ *   key throws IllegalStateException. The shorter version copies the first map and calls
+ *   merge(k, v, Integer::sum) for each entry of the second. If it has to be thread-safe, the
+ *   same merge call on a ConcurrentHashMap is atomic per key."
+ *
+ * TRAP
+ *   ! putAll chupchap overwrite karta hai: mouse 450 ki jagah 150 aata hai.
+ *   ! Map.merge mein function null return kare to key hi hat jati hai, aur value null di to
+ *     NullPointerException.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? What exception does toMap throw without a merge function, and why?
+ *     -> IllegalStateException ("Duplicate key mouse ..."). toMap(key, value) unique keys maan
+ *        ke chalta hai; duplicate pe rakhe, jode ya overwrite kare, woh guess nahi karta.
  *   ? One map has a null value -- which version breaks?
+ *     -> A (toMap) aur C (summingInt) NullPointerException dete hain. B mein doosre map ka null
+ *        NPE deta hai, pehle map ka null chupchap output mein reh jata hai. Pehle null filter karo.
  *   ? Merge N maps, not two.
+ *     -> mergeAll() dekho: saare entrySets flatMap karo, phir groupingBy(key, summingInt(value)).
  *   ? Now do it thread-safely across 8 threads.
+ *     -> Shared ConcurrentHashMap pe merge(k, v, Integer::sum): per key atomic, poore map pe
+ *        lock nahi. Contention bahut ho to computeIfAbsent(k, x -> new LongAdder()).add(v).
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Combine counters from multiple sources
  *   - Sum inventory across warehouses
  *   - Reduce a list of maps
  *   - Word count across files
+ *
+ * APNI STORY SE JODO
+ *   "In a batch job I replaced a synchronized shared HashMap with ConcurrentHashMap to remove
+ *   lock contention, and the batch window went from 45 minutes to 8 minutes."
+ *   Note: thread-safe wale follow-up ke baad bolo. Wahan merge ya compute use hua tha ya nahi,
+ *   [jo sach ho] bharo; guess mat karo.
+ *
+ * VARIANTS     : classic -- word count across files, sum stock across warehouses
  * ============================================================================================== */
 
 import java.util.*;
@@ -62,7 +96,7 @@ public class Q13MergeMaps {
                         Integer::sum, TreeMap::new));
     }
 
-    /* ---- B : Map.merge, shortest and allocation-free ---- */
+    /* ---- B : Map.merge, shortest, no intermediate stream ---- */
     static Map<String, Integer> mergeInPlace(Map<String, Integer> a, Map<String, Integer> b) {
         Map<String, Integer> out = new TreeMap<>(a);
         b.forEach((k, v) -> out.merge(k, v, Integer::sum));

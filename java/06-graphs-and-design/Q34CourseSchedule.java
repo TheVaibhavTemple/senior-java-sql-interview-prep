@@ -4,6 +4,7 @@
  * TRACK        : Graphs & Design Data Structures
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P3   -- backend rounds mein kam aata; topo sort ka idea design mein useful hai
  * TECHNIQUE    : Kahn's algorithm - topological sort by in-degree, with free cycle detection
  *
  * PROBLEM
@@ -22,9 +23,9 @@
  *   APPROACH                                       TIME          SPACE     VERDICT
  *   ----------------------------------------------------------------------------------------
  *   Try every permutation                          O(n!)         O(n)      avoid
- *   DFS with three colours                         O(V+E)        O(V)      acceptable
+ *   DFS with three colours                         O(V+E)        O(V+E)    acceptable
  *       > Use when you must REPORT the cycle, not just detect it.
- *   Kahn's BFS on in-degrees                       O(V+E)        O(V)      WRITE THIS
+ *   Kahn's BFS on in-degrees                       O(V+E)        O(V+E)    WRITE THIS
  *       > One loop, and the cycle check is free.
  *
  * WHY THIS ONE
@@ -34,12 +35,41 @@
  *   (prerequisite -> course, not the reverse) and decrementing in-degree without the == 0
  *   check, which enqueues a node several times.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Har course kitne prerequisites ka wait kar raha hai, wahi uska in-degree hai. In-degree 0
+ *   walon se shuru karo; ek course hua to uske dependents ka in-degree ghatao, 0 hua to queue
+ *   mein daalo. Saare courses place nahi hue to kahin cycle hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Trying every ordering is factorial, so I model it as a directed graph with an edge from
+ *   each prerequisite to the course that needs it. I use Kahn's algorithm: start with every
+ *   course whose in-degree is zero, and each time I take one I decrement its successors and
+ *   enqueue any that reach zero, which is O(V + E) time and space. If I place fewer than V
+ *   courses there is a cycle, so detection comes for free. If I must report the cycle itself,
+ *   I switch to a three-colour DFS."
+ *
+ * TRAP
+ *   ! Edge direction ulti mat banao: prerequisite -> course. Ulti banayi to order bhi ulta
+ *     aata hai.
+ *   ! Successor ko tabhi enqueue karo jab in-degree EXACTLY 0 ho; har decrement par daala to
+ *     ek node kai baar aayega.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? How do you know there is a cycle without a separate check?
+ *     -> Cycle ke nodes ek doosre ka wait karte hain, unka in-degree kabhi 0 nahi hota, to wo
+ *        kabhi place nahi hote. Placed count < V matlab cycle.
  *   ? Which direction do the edges point, and why does it matter?
+ *     -> prerequisite -> course, taaki in-degree = bache hue prerequisites. Ulta kiya to Kahn
+ *        reverse order dega, yaani course apne prerequisite se pehle.
  *   ? Report the actual cycle, not just its existence -- which approach?
+ *     -> Three-colour DFS ke saath parent array. GRAY (state 1) node par wapas pahunche to
+ *        current node se parent chain peeche chalo; wahi cycle hai.
  *   ? Alien dictionary -- restate it as this problem.
+ *     -> Letters nodes hain; adjacent words ka pehla alag character edge deta hai (c1 -> c2).
+ *        Kahn se order. Cycle ho, ya "abc" ke baad "ab" aaye, to invalid.
  *   ? What does the number of BFS levels tell you about parallel scheduling?
+ *     -> Level-wise BFS karo (queue size freeze): ek level ke courses saath mein ho sakte hain.
+ *        Levels ki ginti = minimum semesters = sabse lambi dependency chain.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Course schedule I and II
@@ -48,6 +78,8 @@
  *   - Detect cycle in a directed graph
  *   - Build order
  *   - Minimum height trees
+ *
+ * VARIANTS     : LC 207, LC 210, LC 269, LC 310
  * ============================================================================================== */
 
 import java.util.*;

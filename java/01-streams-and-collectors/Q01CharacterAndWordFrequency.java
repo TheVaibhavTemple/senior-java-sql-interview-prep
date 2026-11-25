@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : EASY     (1 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- lagbhag har round mein aata hai; groupingBy yahin se test hota hai
  * TECHNIQUE    : Hash-map counting + Collectors.groupingBy with a map supplier and a downstream collector
  *
  * PROBLEM
@@ -35,12 +36,39 @@
  *   classifier, map supplier, downstream collector. Reach for the int[] version only when
  *   they ask you to optimise, and say out loud why you are switching.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Har character ko key banao aur uska count value. groupingBy(key, LinkedHashMap::new,
+ *   counting()) ek hi line mein yahi karta hai. LinkedHashMap isliye, taaki pehli baar aane
+ *   wala order bana rahe. Top N ke liye entries ko value se ulta sort karo aur limit(n).
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The brute force rescans the string for every character, which is O(n^2), so I skip it.
+ *   I stream the characters and use the three-argument groupingBy: identity as the key,
+ *   LinkedHashMap::new to keep first-seen order, and counting() as the downstream. That is
+ *   O(n) time and O(k) space for k distinct characters. If they want raw speed on ASCII, an
+ *   int[256] avoids boxing, and for emoji I switch chars() to codePoints()."
+ *
+ * TRAP
+ *   ! chars() UTF-16 units deta hai, emoji do units mein toot jata hai; Unicode ho to
+ *     codePoints() lo. int[256] wala version char > 255 pe exception deta hai.
+ *   ! Words mein split("\\s+") se pehle trim() aur toLowerCase() nahi kiya to leading space
+ *     se "" word aata hai, aur "The" aur "the" alag gine jaate hain.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why does counting() return Long and not Integer?
+ *     -> Stream.count() bhi long deta hai; elements Integer.MAX_VALUE se zyada ho sakte hain.
+ *        Integer hi chahiye to Collectors.summingInt(c -> 1) lagao.
  *   ? How do you get a TreeMap sorted by character instead?
+ *     -> Sirf map supplier badlo: groupingBy(identity(), TreeMap::new, counting()).
  *   ? Same problem on a 10 GB file that does not fit in memory -- what changes?
+ *     -> Files.lines() se lazy padho (try-with-resources); map mein sirf distinct keys rehti
+ *        hain. Words bhi fit na hon to hash(word) % N se N files banao, har file alag gino.
  *   ? Is this correct on a parallelStream? Why?
+ *     -> Haan, order bhi. Har thread apna alag map banata hai aur combiner merge karta hai,
+ *        shared state nahi. Race tab hota jab forEach se ek shared HashMap update karte.
  *   ? Now do it without Collectors.groupingBy.
+ *     -> Loop mein map.merge(c, 1, Integer::sum), ya toMap(identity(), c -> 1L, Long::sum,
+ *        LinkedHashMap::new). Dono O(n).
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Word frequency in a paragraph
@@ -48,6 +76,8 @@
  *   - Top K frequent words
  *   - Anagram check
  *   - Count by any object field
+ *
+ * VARIANTS     : LC 242, LC 347, LC 451, LC 692
  * ============================================================================================== */
 
 import java.util.*;

@@ -4,6 +4,7 @@
  * TRACK        : Java 8 Streams & Collectors
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- "parallel stream kab nahi" product/GCC rounds mein aata hai
  * TECHNIQUE    : Mutable reduction via collect (thread-confined accumulate + combine); Collector.of for custom collectors
  *
  * PROBLEM
@@ -39,13 +40,43 @@
  *   and then combines, so it needs no synchronisation", and "parallelStream uses the
  *   shared common ForkJoinPool, so I would never put blocking I/O on it".
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Parallel stream ke forEach se shared ArrayList mein add karna data race hai: elements gum
+ *   hote hain ya ArrayList andar se exception deta hai. collect() har split ko apna container
+ *   deta hai aur end mein combiner se jodta hai, isliye lock nahi chahiye. parallelStream
+ *   JVM-wide common ForkJoinPool pe chalta hai, us pe blocking I/O mat daalo.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "The bug is forEach adding to a plain ArrayList from many threads; that is a data race, so
+ *   elements get lost or ArrayList throws. A synchronized list is correct, but every add
+ *   fights for one lock, so it can be slower than sequential. I use collect(Collectors.toList()),
+ *   which fills a separate list per split and merges them in the combiner: O(n), no locking.
+ *   I also keep blocking I/O off parallel streams, because they run on the shared common
+ *   ForkJoinPool, and for small inputs the split and merge cost makes parallel slower."
+ *
+ * TRAP
+ *   ! Ek run mein count sahi aa gaya to "safe hai" mat bolo; data race har run mein nahi
+ *     dikhta (neeche expected output mein bhi survive hua).
+ *   ! parallelStream mein blocking I/O ya DB call daali to poore JVM ka common pool atak jata
+ *     hai, baaki parallel streams bhi slow ho jaati hain.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? When is the combiner of a Collector invoked? Prove it.
+ *     -> Sirf parallel mein, jab do splits ke partial containers jodne hon; sequential mein
+ *        kabhi nahi. Proof: combiner mein print daalo, stream() aur parallelStream() chalao.
  *   ? Why is parallel slower here for n = 1000?
+ *     -> Split, thread scheduling aur combine ka kharcha 1000 chhote operations se zyada hai,
+ *        upar se Integer boxing. Parallel tab jab elements x per-element kaam bada ho.
  *   ? How do you run a parallel stream on your own pool, and why is that a workaround
  *     rather than a feature?
+ *     -> pool.submit(() -> list.parallelStream()...).get(), "isolated pool" section dekho. Ye
+ *        implementation detail pe tika hai, spec guarantee nahi; pool shutdown bhi khud karo.
  *   ? Is Collectors.toList() thread-safe? Is the list it returns?
+ *     -> Parallel collect safe hai kyunki har split apni list bharta hai, phir combine. Return
+ *        list ke type ya thread-safety ki koi guarantee nahi (abhi ArrayList); share mat karo.
  *   ? What does the CONCURRENT characteristic change?
+ *     -> Sab threads ek hi shared thread-safe container (jaise ConcurrentHashMap) mein add
+ *        karte hain, combiner nahi chalta; tabhi jab collector UNORDERED ho ya stream unordered.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Why parallel streams hurt
@@ -53,6 +84,17 @@
  *   - Thread-safe accumulation
  *   - ForkJoinPool common pool problems
  *   - Reduce vs collect
+ *
+ * JAVA 21 MEIN
+ *   - Blocking I/O ke liye parallel stream nahi, Executors.newVirtualThreadPerTaskExecutor()
+ *     (virtual threads, Java 21). Parallel stream sirf CPU-bound, in-memory kaam ke liye.
+ *
+ * APNI STORY SE JODO
+ *   "I have used Java 21 virtual threads at work, so for blocking calls I reach for them, and I
+ *   keep parallel streams for CPU-bound work on data already in memory."
+ *   Note: virtual threads kis kaam mein use kiye, [jo sach ho] bharo; koi number mat jodo.
+ *
+ * VARIANTS     : classic -- custom Collector for joining or top-K, reduce vs collect for a sum
  * ============================================================================================== */
 
 import java.util.*;

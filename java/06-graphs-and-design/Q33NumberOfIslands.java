@@ -4,6 +4,7 @@
  * TRACK        : Graphs & Design Data Structures
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P3   -- India mein Java backend rounds mein graph kam aata hai; aaye to pehle yahi
  * TECHNIQUE    : Grid DFS/BFS flood fill with in-place visited marking
  *
  * PROBLEM
@@ -23,10 +24,12 @@
  *   ----------------------------------------------------------------------------------------
  *   Union-Find                                     O(mn a)       O(mn)     acceptable
  *       > Correct, and the right call when the grid changes over time.
- *   DFS, marking visited in place                  O(mn)         O(mn) sta WRITE THIS
+ *   DFS, marking visited in place                  O(mn)         O(mn)     WRITE THIS
  *       > Shortest correct answer. Sinking the island removes the visited array.
- *   BFS with a queue                               O(mn)         O(min(m,n WRITE THIS
+ *       > The O(mn) space is the recursion stack on an all-land grid.
+ *   BFS with a queue                               O(mn)         O(mn)     WRITE THIS
  *       > Use when the grid is large -- DFS recursion can be mn deep.
+ *       > Queue is about min(m,n) on an all-land grid; O(mn) is the safe worst case.
  *
  * WHY THIS ONE
  *   Every grid question is the same four lines: bounds check, visited check, mark, recurse
@@ -35,12 +38,40 @@
  *   all-ones grid overflows the stack with DFS, and in BFS you must mark on ENQUEUE, not
  *   on dequeue, or the same cell enters the queue many times.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Grid scan karo. Jahan '1' mile, count++ aur us poore island ko "dubo do" (sab '1' ko '0')
+ *   DFS ya BFS se. Isse wahi island dobara count nahi hota aur alag visited array nahi
+ *   chahiye. Bade grid par DFS recursion stack overflow kar sakta hai, tab BFS lo.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "I scan every cell, and when I find land I count a new island and flood-fill it, turning
+ *   its cells to water so they are never counted again. Each cell is touched a constant number
+ *   of times, so it is O(m*n) time, and the DFS recursion can be m*n deep. On a large grid
+ *   that recursion can overflow the stack, so I would use BFS with an ArrayDeque and mark
+ *   cells when I enqueue them, not when I dequeue them. Sinking modifies the input, so I
+ *   either confirm that is allowed or work on a copy, as this file does."
+ *
+ * TRAP
+ *   ! BFS mein cell ko ENQUEUE karte waqt visited mark karo; dequeue par kiya to ek cell kai
+ *     baar queue mein jaata hai.
+ *   ! Bounds check sabse pehle, g[r][c] padhne se pehle; warna
+ *     ArrayIndexOutOfBoundsException.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? When does the DFS version blow the stack, and what do you do about it?
+ *     -> Bada island, jaise 1000x1000 sab land: recursion lakhon calls deep, default thread
+ *        stack nahi jhel paata, StackOverflowError. Fix: BFS ya explicit stack wala DFS.
  *   ? Why mark visited on enqueue rather than on dequeue?
+ *     -> Dequeue par mark kiya to ek cell ke kai neighbours use process hone se pehle hi queue
+ *        mein daal dete hain. Count sahi rahega, par kaam aur memory badh jaate hain.
  *   ? Islands can connect diagonally now -- what changes?
+ *     -> Sirf DIRS mein 4 ki jagah 8 directions (diagonals bhi). Baaki code same.
  *   ? The grid arrives as a stream of updates -- which approach now?
+ *     -> Union-Find: har naya land cell naya set, count++; har land neighbour ke saath union
+ *        safal ho to count--. Har update lagbhag O(1) amortised.
  *   ? Max area of an island instead of the count.
+ *     -> Wahi traversal; DFS 1 + chaaron neighbours ka area return kare, aur max rakho. Code:
+ *        maxAreaOfIsland.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Flood fill
@@ -49,6 +80,8 @@
  *   - Surrounded regions
  *   - Word search
  *   - Shortest path in a binary matrix
+ *
+ * VARIANTS     : LC 200, LC 695, LC 733, LC 994, LC 130, LC 79, LC 1091, LC 305
  * ============================================================================================== */
 
 import java.util.*;

@@ -74,6 +74,7 @@ def main():
                 out.append('--   ERROR: ' + str(exc))
             out.append('--')
         out.append('-- ' + '=' * 86)
+        con.close()               # Windows cannot delete prep.db while a connection holds it
 
         if not dry:
             open(path, 'w', encoding='utf-8').write(src + '\n' + '\n'.join(out) + '\n')

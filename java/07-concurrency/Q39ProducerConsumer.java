@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- haath se wait/notify aur BlockingQueue, dono roz poochte hain
  * TECHNIQUE    : Bounded buffer with wait/notifyAll; BlockingQueue with a poison pill for shutdown
  *
  * PROBLEM
@@ -36,13 +37,42 @@
  *   poison pill is the standard answer, and the follow-up is always "what about N
  *   consumers": N pills, one each.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Buffer full ho to producer wait kare, khali ho to consumer wait kare, dono while loop mein.
+ *   Ek hi monitor hai to producer aur consumer ek hi wait set mein hain, isliye notifyAll.
+ *   Production mein ArrayBlockingQueue lo. Band karne ke liye har consumer ko ek poison pill.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "An unbounded queue has no backpressure, so a fast producer eventually exhausts the heap.
+ *   By hand I write a bounded buffer where put waits while full and take waits while empty,
+ *   both in while loops, with notifyAll because producers and consumers share one wait set.
+ *   put and take are O(1) and memory is capped at the capacity. In real code I use
+ *   ArrayBlockingQueue, and for shutdown I send one poison pill per consumer after all the
+ *   producers have finished."
+ *
+ * TRAP
+ *   ! N consumers ke liye ek hi pill bheji to baaki N-1 hamesha take() mein atke rahenge.
+ *   ! Pill tab daalo jab saare producers khatam ho jaayein (join ke baad), warna pill ke
+ *     peeche aayi jobs koi nahi uthayega.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why notifyAll and not notify with a single monitor?
+ *     -> Ek wait set mein producer aur consumer dono hain. notify() producer ko jaga sakta hai
+ *        jab consumer ko jagana tha; wo phir wait karega aur sab atak sakte hain.
  *   ? N consumers -- how many poison pills, and why?
+ *     -> N pills. Har consumer pill dekh ke exit karta hai aur use wapas nahi daalta, to ek
+ *        pill sirf ek consumer ko rokti hai.
  *   ? The producer is much faster than the consumer -- what does a bounded queue do about
  *     it?
+ *     -> put() block hota hai, to producer consumer ki speed par aa jata hai. Yahi
+ *        backpressure hai, aur memory capacity se upar nahi jaati.
  *   ? ArrayBlockingQueue vs LinkedBlockingQueue vs SynchronousQueue -- one scenario each.
+ *     -> ABQ: fixed array, ek lock, bounded work queue. LBQ: alag put/take lock, zyada
+ *        throughput, par default capacity Integer.MAX_VALUE. SynchronousQueue: capacity zero,
+ *        seedha handoff; newCachedThreadPool isi pe chalta hai.
  *   ? put vs offer vs add -- three different failure behaviours.
+ *     -> Full queue par: put() block karta hai, offer() false deta hai (timed offer wait karke
+ *        false), add() IllegalStateException phenkta hai.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Bounded buffer
@@ -50,6 +80,18 @@
  *   - BlockingQueue implementations
  *   - Backpressure
  *   - Dining philosophers
+ *
+ * JAVA 21 MEIN
+ *   - Consumers virtual threads ho sakte hain, par Java 21 mein synchronized ke andar wait()
+ *     carrier thread ko pin kar deta hai. BlockingQueue aur ReentrantLock (Q40) mein ye
+ *     dikkat nahi. JDK 24 mein ye pinning hata di gayi.
+ *
+ * APNI STORY SE JODO
+ *   "Between my services the producer-consumer is Azure Service Bus: the queue decouples them,
+ *   and a message that keeps failing goes to the dead-letter queue, which we review."
+ *   Note: Poison pill (shutdown signal) aur poison message (DLQ) ka farak bolo, dono alag hain.
+ *
+ * VARIANTS     : LC 1188, classic - many producers and consumers with N poison pills
  * ============================================================================================== */
 
 import java.util.*;

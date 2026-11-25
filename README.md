@@ -1,23 +1,43 @@
 # Senior Java + SQL Interview Prep
 
-**67 interview questions, every one of them runnable.**
-45 Java files and 22 SQL files, written for the **8–10 year** backend/cloud band —
-the round where the brute force is assumed and the interviewer is listening for the
-trade-off instead.
+**84 interview questions, every one of them runnable**: 56 Java files and 28 SQL files
+(170 SQL queries), for the **8-10 year Java backend** round in India: service companies, product
+and fintech companies, GCCs and banks. At this level the brute force is assumed; the interviewer is
+listening for the trade-off, the trap and the follow-up.
 
-Every file carries, in a header comment:
+Ye repo meri padhne ki style mein hai: samjho Hinglish mein, bolo English mein, trap pehle se
+pata ho, aur har follow-up ka jawab ready ho.
 
-| Field | What it tells you |
+| Start here | What it is |
 |---|---|
-| **DIFFICULTY** | Easy / Medium / Hard (1–3) |
-| **WEIGHTAGE** | HIGH = asked in almost every round · Medium = common · Low = occasional |
-| **TECHNIQUE** | The named pattern, so you can file it in memory |
-| **ALGORITHM** | The 4–6 steps, in order, before any syntax |
-| **APPROACHES** | Every approach with time / space / verdict — what to say *out loud* first |
-| **WHY THIS ONE** | Why the chosen approach wins in an interview, not just in a benchmark |
-| **FOLLOW-UPS** | What lands 30 seconds after you stop typing |
-| **ALSO UNLOCKS** | The other problems this one solution answers |
-| **EXPECTED OUTPUT** | Real output, captured by running the file — not hand-written |
+| [docs/STUDY_PLAN.md](docs/STUDY_PLAN.md) | 10 din ka plan, roz ka loop, interview wale din kya karna hai |
+| [docs/INDEX.md](docs/INDEX.md) | Saare 84 sawaal ek table mein, Priority ke hisaab se |
+| [docs/AUDIT.md](docs/AUDIT.md) | Kaunsa sawaal kyun hai, kya galat tha aur theek kiya, kya joda |
+| [docs/STYLE.md](docs/STYLE.md) | Har file ka format, aur "apni story" ke rules |
+
+---
+
+## Har file mein kya hai
+
+| Block | Kya batata hai |
+|---|---|
+| **DIFFICULTY / WEIGHTAGE** | Kitna mushkil, aur kitni baar poocha jaata hai |
+| **PRIORITY** | P1 pehle (almost har round), P2 baad mein, P3 time bache to |
+| **TECHNIQUE / ALGORITHM** | Pattern ka naam, aur syntax se pehle ke 4-6 steps |
+| **APPROACHES** | Har approach ka time / space / verdict: code se pehle yahi bolna hai |
+| **WHY THIS ONE** | Interview mein ye approach kyun jeet-ta hai |
+| **SAMJHO** | Idea Hinglish mein, 2-4 lines |
+| **AISE BOLO** | 30-40 second ka English jawab, first person |
+| **TRAP** | Woh galti jo marks kaat-ti hai |
+| **FOLLOW-UPS KE JAWAB** | Code ke baad aane wale sawaal, har ek ke jawab ke saath |
+| **JAVA 21 MEIN / ORACLE / POSTGRES MEIN** | Jahan naya API ya DB syntax jawab badalta hai |
+| **APNI STORY SE JODO** | Jahan meri asli kaam ki baat fit hoti hai (company naam ke bina) |
+| **EXPECTED OUTPUT / RESULTS** | File chala kar capture kiya asli output, haath se likha nahi |
+
+Har folder ke README mein **Mock round** (interviewer ka drill-down) aur **Rapid fire**
+(ek-line jawab) bhi hai. Jahan possible hai, file **galat version** bhi chala kar dikhati hai:
+woh HashMap jo order kho deta hai, `volatile int++` jo updates gira deta hai, `NOT IN` jo NULL par
+khaali aata hai, double jo paise mein paise kho deta hai.
 
 ---
 
@@ -27,50 +47,59 @@ Every file carries, in a header comment:
 git clone https://github.com/TheVaibhavTemple/senior-java-sql-interview-prep.git
 cd senior-java-sql-interview-prep
 
-# --- Java: every file is single-file runnable, no build tool, no dependencies ---
+# Java: every file is single-file runnable, no build tool, no dependencies
 java java/03-two-pointers-and-sliding-window/Q21SlidingWindowTemplate.java
 
-# run all 45 and diff against the recorded output
+# run all Java files and diff each against the EXPECTED OUTPUT recorded inside it
 ./run-java.sh
 
-# --- SQL: builds a seeded SQLite database and runs all 101 queries ---
-python3 sql/run_all.py
+# SQL: builds a seeded SQLite database and runs every query
+python3 sql/run_all.py --dry      # run only, report failures
+python3 sql/run_all.py            # run and re-stamp the RESULTS block in every file
 ```
 
-`run-java.sh` compiles all 45 files, runs them, and diffs each one against the
-`EXPECTED OUTPUT` block recorded inside it — **41 match byte-for-byte**. The other four
-(`Q14`, `Q36`, `Q44`, `Q45`) are marked `NON-DETERMINISTIC` because they demonstrate data
-races, lost updates, identity hashes and scheduler-dependent pool metrics; their numbers
-change every run *by design*, so the script only checks that they still run clean.
+**Requirements:** JDK 21 (folder 08 uses Java 21 features; the rest also runs on 11+) and
+Python 3.8+ with SQLite 3.39+ (S24 and S28 use FULL / RIGHT JOIN; window functions need 3.25+).
+Nothing else: no Maven, no Gradle, no server.
 
-Requirements: **JDK 11+** (tested on OpenJDK 21) and **Python 3.8+** with stdlib `sqlite3`
-(3.25+ for window functions). Nothing else. No Maven, no Gradle, no server.
+**Windows:** run `./run-java.sh` from Git Bash, and use `python` instead of `python3` if that is
+what your install has. Both scripts handle CRLF line endings.
+
+`run-java.sh` checks every Java file against its recorded output. Four files (`Q14`, `Q36`, `Q44`,
+`Q45`) are marked `NON-DETERMINISTIC` because they show data races, lost updates and
+scheduler-dependent pool numbers that change every run by design; for those the script only checks
+that they run clean.
 
 ---
 
-## The idea: patterns, not problem counts
+## Pattern, count nahi
 
-These are not 67 unrelated problems. Each one is a **pattern representative** — solve it once
-and everything in its *ALSO UNLOCKS* list becomes the same problem with different nouns.
+Ye 84 alag-alag sawaal nahi hain. Har file ek **pattern** hai: ek baar solve karo, uski
+*ALSO UNLOCKS* list ke sawaal wahi hain, bas naam badle hue.
 
-**Five Java templates carry most of the DSA round:**
+**Java ke paanch template jo DSA round ka zyada hissa cover karte hain:**
 
 | Template | File |
 |---|---|
-| Sliding window — expand right, shrink while invalid, record | `Q21SlidingWindowTemplate` |
-| Prefix sum + HashMap — running sum, look up `sum - k` | `Q23SubarraySumEqualsK` |
-| Bounded heap / two heaps — Kth largest, running median | `Q27KthLargestAndMedian` |
-| Grid BFS/DFS — bounds check, mark, four directions | `Q33NumberOfIslands` |
-| `groupingBy` + downstream collector — every "per department" question | `Q06GroupByAndAggregate` |
+| Sliding window: expand right, shrink while invalid, record | `Q21SlidingWindowTemplate` |
+| Prefix sum + HashMap: running sum, look up `sum - k` | `Q23SubarraySumEqualsK` |
+| Bounded heap / two heaps: Kth largest, running median | `Q27KthLargestAndMedian` |
+| Grid BFS/DFS: bounds check, mark, four directions | `Q33NumberOfIslands` |
+| `groupingBy` + downstream collector: har "per department" sawaal | `Q06GroupByAndAggregate` |
 
-**Four SQL ideas carry most of the SQL round:**
+**SQL ke chaar idea jo SQL round ka zyada hissa cover karte hain:**
 
 | Idea | File |
 |---|---|
-| `ROW_NUMBER() = 1` over `PARTITION BY` — latest row per key, top N per group | `S19`, `S09` |
-| Running total over a window frame — cumulative, moving average, budget cutoffs | `S10`, `S14` |
-| `LAG` + running `SUM` of a flag — sessions, streaks, islands | `S15`, `S16` |
+| `ROW_NUMBER() = 1` over `PARTITION BY`: latest row per key, top N per group | `S19`, `S09` |
+| Running total over a window frame: cumulative, balance, budget cutoffs | `S10`, `S25`, `S14` |
+| `LAG` + running `SUM` of a flag: sessions, streaks, islands | `S15`, `S16` |
 | Anti-join (`NOT EXISTS`) and the `NOT IN` + `NULL` trap | `S01`, `S21` |
+
+**Fintech / backend wale sawaal** jo is profile mein zaroor aate hain: BigDecimal money (`Q52`),
+retry + idempotency (`Q50`), synchronized HashMap vs ConcurrentHashMap (`Q51`), virtual threads
+(`Q49`), FX rate at a timestamp (`Q55`), reconciliation (`S24`), running balance (`S25`), keyset
+pagination (`S26`), idempotent upsert (`S27`), duplicate payments (`S17`).
 
 ---
 
@@ -78,70 +107,51 @@ and everything in its *ALSO UNLOCKS* list becomes the same problem with differen
 
 ```
 java/
-  01-streams-and-collectors/          14 files   Collectors, groupingBy, flatMap, parallel streams
-  02-arrays-and-hashing/               5 files   Two Sum, anagrams, XOR, prefix sums, top-K
-  03-two-pointers-and-sliding-window/  5 files   reversal, palindromes, the window template, Kadane
-  04-sorting-searching-heaps/          4 files   merging, intervals, heaps, binary search variants
-  05-linkedlist-stack-tree/            3 files   reverse/Floyd, monotonic stack, BFS + BST bounds
-  06-graphs-and-design/                3 files   LRU cache, grid flood fill, topological sort
-  07-concurrency/                     11 files   executors, locks, CompletableFuture, deadlock, pools
+  01-streams-and-collectors/             16 files   Java 8 Streams & Collectors
+  02-arrays-and-hashing/                  5 files   Arrays & Hashing
+  03-two-pointers-and-sliding-window/     5 files   Two Pointers & Sliding Window
+  04-sorting-searching-heaps/             5 files   Sorting, Searching & Heaps
+  05-linkedlist-stack-tree/               3 files   Linked List, Stack & Tree
+  06-graphs-and-design/                   4 files   Graphs & Design Data Structures
+  07-concurrency/                        12 files   Concurrency & Multithreading
+  08-core-java-and-java21/                6 files   Core Java & Java 21
 
 sql/
-  00-schema/                          schema + seed; load once, everything else runs against it
-  01-joins-and-anti-joins/             4 files   anti-joins, self-joins, join grain, CROSS JOIN grids
-  02-aggregation-and-grouping/         4 files   Nth highest, duplicates, conditional pivot, NULLs
-  03-window-functions/                 3 files   ranking, running totals, LAG/LEAD
-  04-cte-and-recursive/                3 files   hierarchies, date spines, budget allocation
-  05-gaps-islands-and-sessions/        3 files   sessionisation, streaks, duplicate detection
-  06-dedup-and-data-quality/           2 files   safe de-duplication, latest row per key
-  07-performance-and-concepts/         3 files   sargability, NOT IN + NULL, quick-fire concepts
-  run_all.py                          rebuilds the DB and re-stamps every expected output
+  00-schema/                             schema + seed; every SQL file runs against it
+  01-joins-and-anti-joins/                6 files   SQL — Joins And Anti Joins
+  02-aggregation-and-grouping/            4 files   SQL — Aggregation And Grouping
+  03-window-functions/                    5 files   SQL — Window Functions
+  04-cte-and-recursive/                   3 files   SQL — Cte And Recursive
+  05-gaps-islands-and-sessions/           3 files   SQL — Gaps Islands And Sessions
+  06-dedup-and-data-quality/              2 files   SQL — Dedup And Data Quality
+  07-performance-and-concepts/            5 files   SQL — Performance And Concepts
+  run_all.py                             rebuilds the DB and re-stamps every RESULTS block
 
-docs/INDEX.md                         all 67 questions in one sortable table
+docs/
+  STUDY_PLAN.md  INDEX.md  AUDIT.md  STYLE.md
 ```
 
 ---
 
 ## Coverage
 
-| | Easy | Medium | Hard | Total | HIGH weightage |
-|---|---|---|---|---|---|
-| **Java** | 10 | 26 | 9 | **45** | 27 |
-| **SQL** | 6 | 12 | 4 | **22** | 14 |
+| | P1 | P2 | P3 | Total | Easy | Easy-Medium | Medium | Medium-Hard | Hard |
+|---|---|---|---|---|---|---|---|---|---|
+| **Java** | 34 | 20 | 2 | **56** | 10 | 2 | 34 | 1 | 9 |
+| **SQL** | 19 | 5 | 4 | **28** | 6 | 2 | 16 | 0 | 4 |
 
-Java 45 files include ~15 secondary implementations (the "and now do it without sorting"
-answer), so there is more code than there are headline questions.
-SQL 22 files contain **101 runnable queries** — each file walks the working, the bug and the fix.
-
-👉 **[Full index of all 67 questions →](docs/INDEX.md)**
-
----
-
-## How to actually use this
-
-1. **Read the header, close the file, type the solution.** Reading code builds recognition;
-   typing it builds recall. The interviewer tests recall.
-2. **Say the APPROACHES table out loud before you write.** At this level, naming the brute
-   force and why you are rejecting it is worth as much as the working code.
-3. **Check the EXPECTED OUTPUT only after you run yours.** If they differ, your edge cases
-   differ — that is the lesson, not the typo.
-4. **Steal the FOLLOW-UPS as flashcards.** They are what lands immediately after the code.
-
-Every Java file also deliberately includes the **wrong** version where one exists —
-the `HashMap` that loses sort order, the `volatile int++` that drops updates, the
-per-node BST check that passes an invalid tree, the `mid++` that breaks Dutch National Flag.
-Seeing the bug run is faster than being told about it.
+Full list with techniques: **[docs/INDEX.md](docs/INDEX.md)**
 
 ---
 
 ## A note on dialects and versions
 
-- **Java** — written to Java 8 semantics so it reads the way an interviewer expects.
-  Two places use later APIs and say so inline: `Collectors.teeing` (Java 12+) in `Q07`.
-  Everything compiles and runs on OpenJDK 21.
-- **SQL** — ANSI SQL that runs unchanged on SQLite 3.25+, PostgreSQL and MySQL 8+.
-  Where a function is dialect-specific (`julianday`, `strftime`, `EXPLAIN QUERY PLAN`)
-  the file says so and names the PostgreSQL/MySQL equivalent.
+- **Java:** folders 01-07 are written to Java 8 semantics, because that is how many interviewers
+  still expect the answer; each file's `JAVA 21 MEIN` block says what changes on newer Java.
+  Folder 08 is Java 21 on purpose. Everything compiles and runs on OpenJDK 21.
+- **SQL:** ANSI SQL that runs on SQLite, PostgreSQL and MySQL 8+. Where Oracle or PostgreSQL
+  differ (`FETCH FIRST`, `ROWNUM`, `MERGE`, `CONNECT BY`, date arithmetic, `EXPLAIN`), the file's
+  `ORACLE / POSTGRES MEIN` block says so.
 
 ---
 

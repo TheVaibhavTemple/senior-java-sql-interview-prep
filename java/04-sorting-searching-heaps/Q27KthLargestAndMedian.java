@@ -4,6 +4,7 @@
  * TRACK        : Sorting, Searching & Heaps
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : MEDIUM **   common; shows up in most loops
+ * PRIORITY     : P2   -- kth largest PriorityQueue ke saath common hai; running median kam aata hai
  * TECHNIQUE    : Bounded min-heap of size k; two balanced heaps for a streaming median
  *
  * PROBLEM
@@ -24,13 +25,13 @@
  *   ----------------------------------------------------------------------------------------
  *   Sort, index n-k                                O(n log n)    O(1)      acceptable
  *       > Fine for a one-off query; hopeless for a stream.
- *   Max-heap of everything, poll k times           O(n + k log n O(n)      acceptable
+ *   Max-heap of everything, poll k times           O(n+k log n)  O(n)      acceptable
  *   Min-heap capped at size k                      O(n log k)    O(k)      WRITE THIS
  *       > Works on a stream, bounded memory, the head is the answer.
  *   Quickselect                                    O(n) avg      O(1)      acceptable
  *       > Faster on average, O(n^2) worst, and it mutates the input.
- *   Two heaps (median)                             O(log n) / in O(n)      WRITE THIS
- *       > Max-heap for the low half, min-heap for the high half.
+ *   Two heaps (median)                             O(log n) add  O(n)      WRITE THIS
+ *       > Max-heap for the low half, min-heap for the high half. median() is O(1).
  *
  * WHY THIS ONE
  *   Both answers are the same idea: keep only the part of the data that can still change
@@ -39,11 +40,37 @@
  *   add to low, move low's top to high, rebalance -- makes the ordering invariant
  *   automatic rather than something you reason about each time.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Kth largest ke liye sirf top k elements chahiye, to size k ka MIN-heap rakho. Heap ka head
+ *   in k mein sabse chhota hai, wahi kth largest hai. Median ke liye do heaps: chhota half
+ *   max-heap mein, bada half min-heap mein. Middle dono ke top par baitha hota hai.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Sorting and picking index n-k is O(n log n) and does not work on a stream. I keep a
+ *   min-heap capped at k and poll whenever the size goes over k, so the head is the kth
+ *   largest in O(n log k) time and O(k) space. Quickselect is O(n) on average, but it is
+ *   O(n^2) in the worst case and it mutates the input, so I mention it as the trade-off. For
+ *   the running median I use a max-heap for the low half and a min-heap for the high half,
+ *   so add is O(log n) and the median is O(1)."
+ *
+ * TRAP
+ *   ! Kth LARGEST ke liye MIN-heap lagta hai, max-heap nahi. Ulta yaad mat karna.
+ *   ! Max-heap ke liye Comparator.reverseOrder() do; (a, b) -> b - a bade numbers par overflow
+ *     karta hai. Median mein do ints jodte waqt bhi long lo, isliye code mein (long) cast hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Kth SMALLEST -- which heap now?
+ *     -> Ulta: size k ka MAX-heap. Head in k chhote elements mein sabse bada hai, wahi kth
+ *        smallest. Code: findKthSmallest.
  *   ? Why does the median insert push through low first?
+ *     -> Naya number low se guzarta hai aur low ka sabse bada high mein chala jaata hai. Isse
+ *        low ka har element high ke har element se chhota ya barabar rehta hai, bina if-else.
  *   ? The stream is infinite -- does memory grow?
+ *     -> Haan, dono heaps saare n elements rakhte hain, O(n). Value range chhoti ho to count
+ *        array (buckets) rakho; warna sliding window ya approximate sketch (jaise t-digest).
  *   ? Kth largest in a matrix sorted by row and column.
+ *     -> Max-heap mein har row ka last element daalo; k-1 baar poll karo aur usi row ka left
+ *        neighbour daalo, phir head jawab hai: O(k log n). Ya value range par binary search.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Kth smallest element
@@ -51,6 +78,8 @@
  *   - K closest points
  *   - Sliding window median
  *   - Top K frequent
+ *
+ * VARIANTS     : LC 215, LC 703, LC 295, LC 347, LC 973, LC 480, LC 378
  * ============================================================================================== */
 
 import java.util.*;
@@ -92,7 +121,7 @@ public class Q27KthLargestAndMedian {
             if (low.isEmpty()) throw new NoSuchElementException("no elements yet");
             return low.size() > high.size()
                     ? low.peek()
-                    : (low.peek() + high.peek()) / 2.0;
+                    : ((long) low.peek() + high.peek()) / 2.0;   // long: int + int can overflow
         }
     }
 

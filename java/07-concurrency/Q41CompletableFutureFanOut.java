@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- senior Java rounds mein CompletableFuture lagbhag pakka aata hai
  * TECHNIQUE    : Asynchronous fan-out / fan-in with allOf, per-call timeout and fallback
  *
  * PROBLEM
@@ -41,13 +42,43 @@
  *   pool is CPU-sized and JVM-wide. The per-call timeout and fallback is what makes it a
  *   production answer.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Teen calls ek saath chalao, total time sabse slow call jitna, sum nahi. Har call apne
+ *   executor pe, apne timeout aur fallback ke saath. allOf sirf batata hai ki sab khatam hue;
+ *   result har future se join() karke lo, ab join block nahi karega.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Calling the three services one after another makes the latency the sum, so I fan out
+ *   with supplyAsync on a dedicated I/O executor, never the common pool, which is CPU-sized
+ *   and shared by the whole JVM. Each call gets its own timeout and an exceptionally
+ *   fallback, so one slow service degrades the response instead of failing it. allOf tells
+ *   me when all are done, the joins after it do not block, and latency is roughly the
+ *   slowest call, capped by its timeout. The trade-off: the timeout completes the future,
+ *   but the underlying call keeps running and holds its thread."
+ *
+ * TRAP
+ *   ! Timeout future ko complete karta hai, background call ko nahi rokta; CompletableFuture
+ *     ka cancel(true) bhi interrupt nahi karta. Slow calls pool ke threads pakde rehte hain.
+ *   ! Async method bina executor ke common ForkJoinPool pe chalta hai. Wahan blocking I/O kiya
+ *     to poore JVM ke parallel streams bhi slow.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Why does allOf return CompletableFuture<Void>?
+ *     -> Futures alag alag type ke ho sakte hain, ek typed result list ban hi nahi sakti. allOf
+ *        sirf completion batata hai; result har future se join() karke lo.
  *   ? thenApply vs thenCompose -- show the type that goes wrong.
+ *     -> Function CF<U> return kare aur thenApply lagao to CF<CF<U>> milta hai. thenCompose
+ *        usko flatten karke CF<U> deta hai, jaise flatMap.
  *   ? Where does the callback run without the Async suffix?
+ *     -> Jo thread pichla stage complete karta hai usi pe; stage pehle se complete ho to
+ *        register karne wale thread pe. Async ho aur executor na do to common pool.
  *   ? exceptionally vs handle vs whenComplete -- which one swallows the exception?
+ *     -> exceptionally aur handle naya value return karke exception recover (swallow) kar
+ *        lete hain. whenComplete sirf dekhta hai, exception aage jata hai.
  *   ? get() throws ExecutionException, join() throws CompletionException -- why the
  *     difference?
+ *     -> get() Future interface se hai: checked ExecutionException aur InterruptedException.
+ *        join() unchecked CompletionException deta hai, taaki lambda aur stream mein chale.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Async orchestration
@@ -55,6 +86,17 @@
  *   - thenCombine / thenCompose
  *   - Fan-out fan-in
  *   - Bulkhead isolation
+ *
+ * JAVA 21 MEIN
+ *   - orTimeout() aur completeOnTimeout() (Java 9 se) upar wale manual TIMER ka ek-line
+ *     replacement hain.
+ *   - I/O fan-out ke liye executor ki jagah Executors.newVirtualThreadPerTaskExecutor() do;
+ *     pool size tune karne ka jhanjhat khatam (Q49).
+ *   - StructuredTaskScope isi fan-out ke liye bana hai, lekin Java 21 mein ye preview hai
+ *     (--enable-preview chahiye). Sirf concept ke roop mein bolo.
+ *
+ * VARIANTS     : classic - aggregate N downstream calls, first response wins with anyOf,
+ *                retry then fallback (Q50)
  * ============================================================================================== */
 
 import java.util.concurrent.*;

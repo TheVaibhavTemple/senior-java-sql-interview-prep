@@ -4,6 +4,7 @@
  * TRACK        : Linked List, Stack & Tree
  * DIFFICULTY   : MEDIUM   (2 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- reverse linked list aur cycle detection service aur product dono mein aate
  * TECHNIQUE    : Three-pointer reversal; Floyd slow/fast traversal
  *
  * PROBLEM
@@ -38,11 +39,37 @@
  *   restarting one pointer at the head finds the cycle entry; that proof is a common
  *   follow-up and a one-line answer if you have seen it.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Do hi tools hain. Reverse: prev, cur, next teen pointer, har node ka arrow ulta karo.
+ *   Slow/fast: slow ek step, fast do step. Cycle hai to dono milenge; fast end par pahuncha to
+ *   slow beech mein hoga. Palindrome = middle nikalo + second half reverse + compare.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Copying the values into a list or a stack works, but it costs O(n) extra space and misses
+ *   the point. I reverse in place with three pointers, prev, cur and next, in O(n) time and
+ *   O(1) space; recursion also works but uses O(n) stack. For a cycle I use Floyd's slow and
+ *   fast pointers: if they meet there is a cycle, and restarting one pointer from the head
+ *   makes them meet again at the cycle entry. I check an empty list, a single node, and
+ *   removing the head itself, which a dummy node handles."
+ *
+ * TRAP
+ *   ! Reverse mein cur.next badalne se pehle next save karo, warna baaki list kho jaati hai.
+ *   ! Fast ka loop condition: fast != null && fast.next != null. Ek check bhoole to
+ *     NullPointerException.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Prove why the second phase of Floyd's algorithm lands on the cycle entry.
+ *     -> Head se entry a, entry se meet b, cycle c. Slow a+b chala, fast 2(a+b), to a+b = kc,
+ *        yaani a = (k-1)c + (c-b). Head aur meet point dono se a step chalo, entry par milte.
  *   ? Reverse only the first k nodes. Then in groups of k.
+ *     -> Three-pointer loop k baar chalao, phir purane head ka next (k+1)th node par jodo.
+ *        Groups: k nodes hain ye check karo, reverse karo, pichhle group ki tail se jodo.
  *   ? Does your palindrome check restore the list? Should it?
+ *     -> Haan, end mein second half dobara reverse karke jodta hai. Karna chahiye: caller ka
+ *        data chupke se badalna side effect hai, aur check ke dauraan list thread-safe nahi.
  *   ? Find the intersection node of two lists without extra space.
+ *     -> Ek pointer A se, ek B se; jo end par pahunche wo doosri list ke head par jaaye. m+n
+ *        steps mein dono intersection par milte hain, ya dono null (intersection nahi).
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Reverse in groups of K
@@ -52,6 +79,8 @@
  *   - Intersection of two lists
  *   - Reorder list
  *   - Detect and remove a loop
+ *
+ * VARIANTS     : LC 206, LC 92, LC 25, LC 141, LC 142, LC 876, LC 234, LC 19, LC 160, LC 143
  * ============================================================================================== */
 
 import java.util.*;

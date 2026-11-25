@@ -4,6 +4,7 @@
  * TRACK        : Two Pointers & Sliding Window
  * DIFFICULTY   : EASY     (1 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- service rounds ka warm-up; rotate wala follow-up bhi pakka aata hai
  * TECHNIQUE    : Two-pointer in-place reversal; rotation by three reversals
  *
  * PROBLEM
@@ -35,11 +36,36 @@
  *   k > n and negative k with ((k % n) + n) % n -- forgetting that is the single most
  *   common bug on this question.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   String ko char[] mein lo, ek pointer shuru pe, ek end pe; swap karo aur andar aao.
+ *   Rotate right by k: poora array ulta, phir pehle k ulte, phir baaki ulte. Bas teen reverse.
+ *   Pehle k = ((k % n) + n) % n karo, taaki k > n aur negative k dono sambhal jayein.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "StringBuilder.reverse() works, but the interviewer wants the manual version, so I take
+ *   a char array and swap from both ends until the pointers cross: O(n) time and O(1)
+ *   extra space on the array. To rotate right by k, copying into a new array costs O(n)
+ *   space; instead I reverse the whole array, then the first k, then the rest, which is
+ *   O(n) time and O(1) space. I normalise k first, so k larger than n, a negative k and
+ *   an empty array are all safe."
+ *
+ * TRAP
+ *   ! k % n bhoole to k > n pe reverse(a, 0, k-1) ArrayIndexOutOfBounds deta hai; aur n == 0
+ *     pe % n khud ArithmeticException. Empty check pehle.
+ *   ! Manual char swap emoji (surrogate pair) tod deta hai; StringBuilder.reverse() pair ko
+ *     sahi rakhta hai.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Rotate LEFT by k instead -- what changes?
+ *     -> Left by k = right by n - k. Ya seedha rotate(a, -k); normalisation sambhal leta hai.
  *   ? Reverse the words in place with a char[] and no split().
+ *     -> Poora char[] ulta karo, phir har word ko alag se ulta karo (wahi reverse(i, j)).
+ *        Extra spaces hatane hon to ek write pointer se compact karo.
  *   ? What is the O(1)-space claim actually measuring, given Java Strings are immutable?
+ *     -> Sirf algorithm ki extra memory: do index aur ek temp. toCharArray() aur new String
+ *        dono O(n) copy hain; true in-place tabhi jab input khud char[] ho.
  *   ? Reverse every word but keep word order.
+ *     -> Space tak scan karo, har word ke start-end pe two-pointer reverse. O(n) time.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Rotate array by K
@@ -47,6 +73,8 @@
  *   - Palindrome check
  *   - Reverse a linked list (same three-pointer idea)
  *   - String rotation check
+ *
+ * VARIANTS     : LC 344, LC 151, LC 189, LC 557, LC 796
  * ============================================================================================== */
 
 import java.util.*;

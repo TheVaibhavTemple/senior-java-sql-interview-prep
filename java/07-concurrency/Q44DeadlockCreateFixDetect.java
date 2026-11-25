@@ -4,6 +4,7 @@
  * TRACK        : Concurrency & Multithreading
  * DIFFICULTY   : HARD     (3 of 3)
  * WEIGHTAGE    : HIGH   ***  asked in almost every round
+ * PRIORITY     : P1   -- "deadlock banao, fix karo, pakdo" har senior round mein aata hai
  * TECHNIQUE    : Global lock ordering; tryLock with timeout and jittered backoff; ThreadMXBean detection
  *
  * PROBLEM
@@ -42,12 +43,45 @@
  *   jstack or jcmd Thread.print prints "Found one Java-level deadlock" directly, and
  *   ThreadMXBean.findDeadlockedThreads does it from inside the JVM.
  *
- * FOLLOW-UPS THE INTERVIEWER ASKS NEXT
+ * SAMJHO
+ *   Deadlock ke liye chaar conditions chahiye: mutual exclusion, hold-and-wait, no
+ *   preemption, circular wait. Ek bhi todo to deadlock nahi. Sabse aasaan: locks hamesha ek
+ *   fixed order mein lo. Ya tryLock timeout ke saath, fail ho to sab chhodo, random wait,
+ *   phir retry.
+ *
+ * AISE BOLO  (30-40 sec)
+ *   "Two threads taking the same two locks in opposite order is the classic deadlock, and one
+ *   global lock avoids it only by killing throughput. My first fix is a global lock order, by
+ *   account id or identity hash with a tie-breaker lock for equal hashes, which removes
+ *   circular wait at no extra cost. The second is tryLock with a timeout that releases
+ *   everything and retries after a random backoff; without the jitter it can livelock. To
+ *   find one in production I would take a jcmd Thread.print dump or call
+ *   ThreadMXBean.findDeadlockedThreads."
+ *
+ * TRAP
+ *   ! "from pehle, to baad mein" lock kiya to A->B aur B->A transfer ek saath chalte hi
+ *     deadlock. Order account ka hona chahiye, call ka nahi.
+ *   ! tryLock retry mein jitter nahi diya to dono threads same rhythm mein fail hote rahenge;
+ *     ye livelock hai, CPU busy aur kaam zero.
+ *
+ * FOLLOW-UPS KE JAWAB
  *   ? Name the four conditions and say which one each fix removes.
+ *     -> Mutual exclusion, hold-and-wait, no preemption, circular wait. Lock ordering circular
+ *        wait todta hai. tryLock + timeout mein thread khud lock chhod deta hai: file ise
+ *        hold-and-wait kehti hai, kai books no preemption. Dono bol do.
  *   ? Why is the tiebreaker lock needed at all?
+ *     -> identityHashCode unique nahi hai, do objects ka same aa sakta hai. Tab order tay nahi
+ *        hota, to pehle global TIE_BREAK lock lo, phir dono.
  *   ? Without jitter, tryLock-and-retry can livelock -- explain how.
+ *     -> Dono apna pehla lock lete hain, doosra nahi milta, dono chhodte hain, same time ruk ke
+ *        phir wahi. Threads busy dikhte hain par koi aage nahi badhta.
  *   ? Read a thread dump: what exactly tells you it is a deadlock?
+ *     -> "Found one Java-level deadlock" section. Threads BLOCKED, "waiting to lock <X>" jahan
+ *        X us thread ne "locked" kiya hai jo humara lock maang raha hai: ek cycle.
  *   ? Can a deadlock happen between database transactions? How is that different?
+ *     -> Haan, do transactions rows ulte order mein lock karein. Farak: DB khud pakad ke ek
+ *        victim chunta hai (Postgres 40P01 poora transaction abort; Oracle ORA-00060 sirf wo
+ *        statement rollback), app retry kare. JVM deadlock khud kabhi nahi tootta.
  *
  * LEARN THIS AND YOU ALSO GET
  *   - Dining philosophers
@@ -56,6 +90,16 @@
  *   - Lock ordering
  *   - tryLock patterns
  *   - Account transfer problem
+ *
+ * JAVA 21 MEIN
+ *   - ThreadMXBean sirf platform threads dekhta hai. Virtual threads ka dump alag command se:
+ *     jcmd <pid> Thread.dump_to_file -format=json <file>.
+ *   - Java 21 mein synchronized ke andar block hua virtual thread carrier ko pin karta hai.
+ *     Saare carriers pin ho jaayein to baaki virtual threads chal hi nahi paate, app hang.
+ *     ReentrantLock mein ye nahi hota; JDK 24 mein ye pinning hata di gayi.
+ *
+ * VARIANTS     : LC 1226 (The Dining Philosophers), classic - bank transfer between two
+ *                accounts
  * ============================================================================================== */
 
 import java.lang.management.*;
