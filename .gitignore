@@ -1,0 +1,15 @@
+# compiled output
+*.class
+out/
+target/
+build/
+
+# the SQL scratch database is rebuilt by run_all.py
+sql/prep.db
+sql/*.db-journal
+
+# editors
+.idea/
+.vscode/
+*.iml
+.DS_Store
